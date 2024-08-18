@@ -86,7 +86,7 @@ const ViewSales = () => {
                   {sale.product_name}
                 </Typography>
                 <Typography color="text.secondary">
-                  Variety: ${sale.variety}
+                  Variety: {sale.variety}
                 </Typography>
                 <Typography color="text.secondary">
                   Retail Price: ${sale.retail_price}
@@ -94,6 +94,9 @@ const ViewSales = () => {
 
                 <Typography color="text.secondary">
                   Quantity: {sale.quantity}
+                </Typography>
+                <Typography color="text.secondary">
+                  Unit : {sale.unit_type}
                 </Typography>
                 <Typography color="text.secondary">
                   Sale Date: {new Date(sale.sale_date).toLocaleDateString()}

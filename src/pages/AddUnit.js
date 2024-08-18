@@ -18,6 +18,7 @@ import {
   Switch
 } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
+import { useLocation } from 'react-router-dom';
 
 const AddUnit = () => {
   const [product_id, setProductId] = useState('');
@@ -35,7 +36,9 @@ const AddUnit = () => {
   const [conversionRate, setConversionRate] = useState('');
   const [conversionDirection, setConversionDirection] = useState('buying'); // 'buying' or 'selling'
   const [isDefault, setIsDefault] = useState(false);
-
+  
+  const location = useLocation();
+  
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -45,9 +48,16 @@ const AddUnit = () => {
         console.error('Error fetching products:', error);
       }
     };
-
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const productIdFromParams = queryParams.get('product_id');
+    if (productIdFromParams) {
+      setProductId(productIdFromParams);
+    }
+  }, [location]);
 
   useEffect(() => {
     if (product_id) {
@@ -60,7 +70,6 @@ const AddUnit = () => {
           console.error('Error fetching units:', error);
         }
       };
-
       fetchUnits();
     }
   }, [product_id]);
@@ -270,14 +279,14 @@ const AddUnit = () => {
                             onChange={(e) => setSelectedExistingUnit(e.target.value)}
                             required
                           >
-                            {existingUnits.map((unit) => (
-                              <MenuItem key={unit.unit_id} value={unit.buying_unit_type}>
-                                {unit.buying_unit_type}
+                            {[...new Set(existingUnits.map((unit) => unit.buying_unit_type))].map((unitType, index) => (
+                              <MenuItem key={index} value={unitType}>
+                                {unitType}
                               </MenuItem>
                             ))}
-                            {existingUnits.map((unit) => (
-                              <MenuItem key={unit.unit_id} value={unit.selling_unit_type}>
-                                {unit.selling_unit_type}
+                            {[...new Set(existingUnits.map((unit) => unit.selling_unit_type))].map((unitType, index) => (
+                              <MenuItem key={index} value={unitType}>
+                                {unitType}
                               </MenuItem>
                             ))}
                           </TextField>

@@ -24,6 +24,7 @@ ChartJS.register(
 
 const Overview = () => {
   const navigate = useNavigate();
+  const [overviewData, setOverviewData] = useState({});
   const [purchaseData, setPurchaseData] = useState([]);
   const [saleData, setSaleData] = useState([]);
   const [inventoryData, setInventoryData] = useState([]);
@@ -31,12 +32,14 @@ const Overview = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [purchasesResponse, salesResponse, inventoriesResponse] = await Promise.all([
+        const [overviewResponse, purchasesResponse, salesResponse, inventoriesResponse] = await Promise.all([
+          axiosInstance.get('/overview'),
           axiosInstance.get('/purchases'),
           axiosInstance.get('/sales'),
           axiosInstance.get('/inventories'),
         ]);
 
+        setOverviewData(overviewResponse.data);
         setPurchaseData(purchasesResponse.data);
         setSaleData(salesResponse.data);
         setInventoryData(inventoriesResponse.data);
@@ -63,22 +66,65 @@ const Overview = () => {
   const salesByProduct = groupDataByProduct(saleData, 'quantity');
   const inventoryByProduct = groupDataByProduct(inventoryData, 'current_stock');
 
-  const createBarData = (title, labels, data) => ({
-    labels,
-    datasets: [
-      {
-        label: title,
-        data,
-        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-      },
-    ],
-  });
+  // Generate unique colors for each product
+  const generateUniqueColors = (count) => {
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+      const color = `hsl(${(i * 360) / count}, 70%, 50%)`;
+      colors.push(color);
+    }
+    return colors;
+  };
+
+  const createBarData = (title, labels, data) => {
+    const backgroundColors = generateUniqueColors(labels.length);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: title,
+          data,
+          backgroundColor: backgroundColors,
+          borderColor: backgroundColors.map(color => color.replace('70%', '90%')),
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
 
   const purchaseBarData = createBarData('Purchases by Product', Object.keys(purchasesByProduct), Object.values(purchasesByProduct));
   const saleBarData = createBarData('Sales by Product', Object.keys(salesByProduct), Object.values(salesByProduct));
   const inventoryBarData = createBarData('Inventory Stock by Product', Object.keys(inventoryByProduct), Object.values(inventoryByProduct));
+
+  // Prepare data for the profits bar chart
+  const prepareProfitBarChartData = () => {
+    const labels = Object.keys(overviewData).map(key => overviewData[key].productName);
+    const profitThisWeek = Object.keys(overviewData).map(key => overviewData[key].profitThisWeek);
+    const profitLastWeek = Object.keys(overviewData).map(key => overviewData[key].profitLastWeek);
+
+    const backgroundColors = generateUniqueColors(labels.length);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Profit This Week',
+          data: profitThisWeek,
+          backgroundColor: backgroundColors,
+          borderColor: backgroundColors.map(color => color.replace('70%', '90%')),
+          borderWidth: 1,
+        },
+        {
+          label: 'Profit Last Week',
+          data: profitLastWeek,
+          backgroundColor: backgroundColors,
+          borderColor: backgroundColors.map(color => color.replace('70%', '90%')),
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
 
   const handleDownload = () => {
     const wb = XLSX.utils.book_new();
@@ -125,6 +171,9 @@ const Overview = () => {
         <Button variant="contained" color="primary" onClick={() => navigate('/dashboard/purchases/add')}>
           Add Purchase
         </Button>
+        <Button variant="contained" color="primary" onClick={() => navigate('/dashboard/sales/add')}>
+          Add Sale
+        </Button>
         <Button variant="contained" color="primary" onClick={() => navigate('/dashboard/inventories/view')}>
           Reconcile Inventory
         </Button>
@@ -160,6 +209,16 @@ const Overview = () => {
             </Typography>
             <Box sx={{ height: 400 }}>
               <Bar data={inventoryBarData} options={{ responsive: true, maintainAspectRatio: false }} />
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Profits by Product
+            </Typography>
+            <Box sx={{ height: 400 }}>
+              <Bar data={prepareProfitBarChartData()} options={{ responsive: true, maintainAspectRatio: false }} />
             </Box>
           </Paper>
         </Grid>

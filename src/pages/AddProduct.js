@@ -18,7 +18,6 @@ const AddProduct = () => {
     if (productName.length > 2) {
       axiosInstance.get(`/products/search?q=${productName}`)
         .then(response => {
-          // Filter results to show only one instance of each product-variety pair
           const uniqueResults = response.data.reduce((acc, product) => {
             const key = `${product.product_name}-${product.variety}`;
             if (!acc[key]) {
@@ -53,16 +52,15 @@ const AddProduct = () => {
         variety,
         description,
       });
+
       setSnackbarMessage('Product added successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-      setProductName('');
-      setCategory('');
-      setVariety('');
-      setDescription('');
-      
+
+      const newProductId = response.data.product_id;
+
       // Navigate to Add Unit page after successful product addition
-      navigate(`/dashboard/units/add?product_id=${response.data.product_id}`);
+      navigate(`/dashboard/units/add?product_id=${newProductId}`);
     } catch (error) {
       setSnackbarMessage('Error adding product: ' + (error.response ? error.response.data.error : error.message));
       setSnackbarSeverity('error');

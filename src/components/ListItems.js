@@ -19,7 +19,7 @@ import { useShopContext } from '../context/ShopContext';
 import { Link } from 'react-router-dom';
 import { ListSubheader } from '@mui/material';
 
-const MainListItems = () => {
+const MainListItems = ({ onItemClick }) => {
   const { shopCount, setShopCount } = useShopContext();
   const [openProducts, setOpenProducts] = useState(false);
   const [openUnits, setOpenUnits] = useState(false);
@@ -77,7 +77,7 @@ const MainListItems = () => {
 
   return (
     <>
-      <ListItem button component={Link} to="/dashboard">
+      <ListItem button component={Link} to="/dashboard" onClick={onItemClick}>
         <ListItemIcon>
           <BarChartIcon />
         </ListItemIcon>
@@ -93,30 +93,18 @@ const MainListItems = () => {
       </ListItem>
       <Collapse in={openProducts} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/products/add" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/products/add" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <PeopleIcon />
             </ListItemIcon>
             <ListItemText primary="Add Product" />
           </ListItem>
-          <ListItem button component={Link} to="/dashboard/products/view" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/products/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <PeopleIcon />
             </ListItemIcon>
             <ListItemText primary="View Products" />
           </ListItem>
-          {/* <ListItem button component={Link} to="/dashboard/productOfferings/add" sx={{ pl: 4 }}>
-            <ListItemIcon>
-              <PeopleIcon />
-            </ListItemIcon>
-            <ListItemText primary="Add Offering" />
-          </ListItem> */}
-          {/* <ListItem button component={Link} to="/dashboard/productOfferings/view" sx={{ pl: 4 }}>
-            <ListItemIcon>
-              <PeopleIcon />
-            </ListItemIcon>
-            <ListItemText primary="View Offerings" />
-          </ListItem> */}
         </List>
       </Collapse>
 
@@ -129,13 +117,13 @@ const MainListItems = () => {
       </ListItem>
       <Collapse in={openUnits} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/units/add" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/units/add" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
             <ListItemText primary="Add Unit" />
           </ListItem>
-          <ListItem button component={Link} to="/dashboard/units/view" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/units/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
@@ -143,32 +131,6 @@ const MainListItems = () => {
           </ListItem>
         </List>
       </Collapse>
-
-      {/* <ListItem button onClick={handleShopsClick}>
-        <ListItemIcon>
-          <StoreIcon />
-        </ListItemIcon>
-        <ListItemText primary="Shops" />
-        {openShops ? <ExpandLess /> : <ExpandMore />}
-      </ListItem> */}
-      {/* <Collapse in={openShops} timeout="auto" unmountOnExit>
-        <List component="div" disablePadding>
-          {shopCount === 0 && (
-            <ListItem button component={Link} to="/dashboard/shops/add" sx={{ pl: 4 }}>
-              <ListItemIcon>
-                <StoreIcon />
-              </ListItemIcon>
-              <ListItemText primary="Add Shop" />
-            </ListItem>
-          )}
-          <ListItem button component={Link} to="/dashboard/shops/view" sx={{ pl: 4 }}>
-            <ListItemIcon>
-              <StoreIcon />
-            </ListItemIcon>
-            <ListItemText primary="View Shops" />
-          </ListItem>
-        </List>
-      </Collapse> */}
 
       <ListItem button onClick={handleInventoriesClick}>
         <ListItemIcon>
@@ -179,13 +141,13 @@ const MainListItems = () => {
       </ListItem>
       <Collapse in={openInventories} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/inventories/add" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/inventories/add" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <InventoryIcon />
             </ListItemIcon>
             <ListItemText primary="Add Inventory" />
           </ListItem>
-          <ListItem button component={Link} to="/dashboard/inventories/view" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/inventories/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <InventoryIcon />
             </ListItemIcon>
@@ -193,31 +155,7 @@ const MainListItems = () => {
           </ListItem>
         </List>
       </Collapse>
-{/* 
-      <ListItem button onClick={handleMarketsClick}>
-        <ListItemIcon>
-          <ShoppingCartIcon />
-        </ListItemIcon>
-        <ListItemText primary="Markets" />
-        {openMarkets ? <ExpandLess /> : <ExpandMore />}
-      </ListItem>
-      <Collapse in={openMarkets} timeout="auto" unmountOnExit>
-        <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/markets/add" sx={{ pl: 4 }}>
-            <ListItemIcon>
-              <ShoppingCartIcon />
-            </ListItemIcon>
-            <ListItemText primary="Add Market" />
-          </ListItem>
-          <ListItem button component={Link} to="/dashboard/markets/view" sx={{ pl: 4 }}>
-            <ListItemIcon>
-              <ShoppingCartIcon />
-            </ListItemIcon>
-            <ListItemText primary="View Markets" />
-          </ListItem>
-        </List>
-      </Collapse> */}
-
+      
       <ListItem button onClick={handlePurchasesClick}>
         <ListItemIcon>
           <LayersIcon />
@@ -227,13 +165,13 @@ const MainListItems = () => {
       </ListItem>
       <Collapse in={openPurchases} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/purchases/add" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/purchases/add" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
             <ListItemText primary="Add Purchase" />
           </ListItem>
-          <ListItem button component={Link} to="/dashboard/purchases/view" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/purchases/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
@@ -251,13 +189,13 @@ const MainListItems = () => {
       </ListItem>
       <Collapse in={openSuppliers} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/suppliers/add" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/suppliers/add" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
             <ListItemText primary="Add Supplier" />
           </ListItem>
-          <ListItem button component={Link} to="/dashboard/suppliers/view" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/suppliers/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
@@ -275,13 +213,13 @@ const MainListItems = () => {
       </ListItem>
       <Collapse in={openSales} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/sales/add" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/sales/add" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
             <ListItemText primary="Add Sale" />
           </ListItem>
-          <ListItem button component={Link} to="/dashboard/sales/view" sx={{ pl: 4 }}>
+          <ListItem button component={Link} to="/dashboard/sales/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
