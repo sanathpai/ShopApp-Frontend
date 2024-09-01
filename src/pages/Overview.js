@@ -11,8 +11,6 @@ import {
   Tooltip, 
   Legend 
 } from 'chart.js';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 
 ChartJS.register(
   CategoryScale, 
@@ -30,34 +28,42 @@ const Overview = () => {
   const [inventoryData, setInventoryData] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [overviewResponse, purchasesResponse, salesResponse, inventoriesResponse] = await Promise.all([
-          axiosInstance.get('/overview'),
-          axiosInstance.get('/purchases'),
-          axiosInstance.get('/sales'),
-          axiosInstance.get('/inventories'),
-        ]);
+    const token = localStorage.getItem('token');
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
-        setOverviewData(overviewResponse.data);
-        setPurchaseData(purchasesResponse.data);
-        setSaleData(salesResponse.data);
-        setInventoryData(inventoriesResponse.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-    fetchData();
-  }, []);
+    if (!token || !isLoggedIn) {
+      navigate('/login'); // Redirect to login page if not logged in
+    } else {
+      const fetchData = async () => {
+        try {
+          const [overviewResponse, purchasesResponse, salesResponse, inventoriesResponse] = await Promise.all([
+            axiosInstance.get('/overview'),
+            axiosInstance.get('/purchases'),
+            axiosInstance.get('/sales'),
+            axiosInstance.get('/inventories'),
+          ]);
 
-  // Grouping data by product name
+          console.log('Overview Data:', overviewResponse.data); // Debugging line to check data structure
+          setOverviewData(overviewResponse.data);
+          setPurchaseData(purchasesResponse.data);
+          setSaleData(salesResponse.data);
+          setInventoryData(inventoriesResponse.data);
+        } catch (error) {
+          console.error('Error fetching data:', error);
+        }
+      };
+      fetchData();
+    }
+  }, [navigate]);
+
+  // Grouping data by product name and unit type
   const groupDataByProduct = (data, key) => {
     return data.reduce((acc, item) => {
-      const productName = item.product_name;
-      if (!acc[productName]) {
-        acc[productName] = 0;
+      const label = `${item.product_name} (${item.unit_type})`;
+      if (!acc[label]) {
+        acc[label] = 0;
       }
-      acc[productName] += item[key];
+      acc[label] += item[key];
       return acc;
     }, {});
   };
@@ -99,9 +105,20 @@ const Overview = () => {
 
   // Prepare data for the profits bar chart
   const prepareProfitBarChartData = () => {
-    const labels = Object.keys(overviewData).map(key => overviewData[key].productName);
-    const profitThisWeek = Object.keys(overviewData).map(key => overviewData[key].profitThisWeek);
-    const profitLastWeek = Object.keys(overviewData).map(key => overviewData[key].profitLastWeek);
+    // Check if overviewData.profits is valid and not empty
+    if (!overviewData.profits || Object.keys(overviewData.profits).length === 0) {
+      return { labels: [], datasets: [] }; // Return empty data if profits data is not available
+    }
+
+    const labels = Object.keys(overviewData.profits).map(key => {
+      const productData = overviewData.profits[key];
+      const productName = productData.productName || 'Unknown';
+      const inventoryUnitType = productData.inventoryUnitType || 'Unknown';
+      return `${productName} (${inventoryUnitType})`;
+    });
+
+    const profitPerUnitThisWeek = Object.keys(overviewData.profits).map(key => overviewData.profits[key].profitPerUnitThisWeek || 0);
+    const profitPerUnitLastWeek = Object.keys(overviewData.profits).map(key => overviewData.profits[key].profitPerUnitLastWeek || 0);
 
     const backgroundColors = generateUniqueColors(labels.length);
 
@@ -109,57 +126,21 @@ const Overview = () => {
       labels,
       datasets: [
         {
-          label: 'Profit This Week',
-          data: profitThisWeek,
+          label: 'Profit Per Unit This Week',
+          data: profitPerUnitThisWeek,
           backgroundColor: backgroundColors,
           borderColor: backgroundColors.map(color => color.replace('70%', '90%')),
           borderWidth: 1,
         },
         {
-          label: 'Profit Last Week',
-          data: profitLastWeek,
+          label: 'Profit Per Unit Last Week',
+          data: profitPerUnitLastWeek,
           backgroundColor: backgroundColors,
           borderColor: backgroundColors.map(color => color.replace('70%', '90%')),
           borderWidth: 1,
         },
       ],
     };
-  };
-
-  const handleDownload = () => {
-    const wb = XLSX.utils.book_new();
-
-    // Add purchase data to the Excel file
-    const purchaseDataSheet = purchaseData.map(purchase => ({
-      'Product Name': purchase.product_name,
-      'Quantity': purchase.quantity,
-      'Order Price': purchase.order_price,
-      'Purchase Date': purchase.purchase_date,
-    }));
-    const ws1 = XLSX.utils.json_to_sheet(purchaseDataSheet);
-    XLSX.utils.book_append_sheet(wb, ws1, 'Purchases');
-
-    // Add sale data to the Excel file
-    const saleDataSheet = saleData.map(sale => ({
-      'Product Name': sale.product_name,
-      'Quantity': sale.quantity,
-      'Retail Price': sale.retail_price,
-      'Sale Date': sale.sale_date,
-    }));
-    const ws2 = XLSX.utils.json_to_sheet(saleDataSheet);
-    XLSX.utils.book_append_sheet(wb, ws2, 'Sales');
-
-    // Add inventory data to the Excel file
-    const inventoryDataSheet = inventoryData.map(inventory => ({
-      'Product Name': inventory.product_name,
-      'Current Stock': inventory.current_stock,
-      'Shop Name': inventory.shop_name,
-    }));
-    const ws3 = XLSX.utils.json_to_sheet(inventoryDataSheet);
-    XLSX.utils.book_append_sheet(wb, ws3, 'Inventories');
-
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    saveAs(new Blob([wbout], { type: 'application/octet-stream' }), 'DashboardData.xlsx');
   };
 
   return (
@@ -176,9 +157,6 @@ const Overview = () => {
         </Button>
         <Button variant="contained" color="primary" onClick={() => navigate('/dashboard/inventories/view')}>
           Reconcile Inventory
-        </Button>
-        <Button variant="contained" color="primary" onClick={handleDownload}>
-          Download Data
         </Button>
       </Box>
       <Grid container spacing={4}>

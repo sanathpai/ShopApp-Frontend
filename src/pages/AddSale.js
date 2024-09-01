@@ -123,7 +123,7 @@ const AddSale = () => {
                 </Select>
               </FormControl>
               <TextField
-                label="Retail Price"
+                label="Retail Price per unit"
                 variant="outlined"
                 fullWidth
                 value={retailPrice}

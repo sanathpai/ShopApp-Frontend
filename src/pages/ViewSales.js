@@ -89,7 +89,7 @@ const ViewSales = () => {
                   Variety: {sale.variety}
                 </Typography>
                 <Typography color="text.secondary">
-                  Retail Price: ${sale.retail_price}
+                  Retail Price: {sale.retail_price}
                 </Typography>
 
                 <Typography color="text.secondary">

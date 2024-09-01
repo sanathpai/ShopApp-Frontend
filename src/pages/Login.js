@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -13,7 +13,6 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
-
 const theme = createTheme();
 
 const Login = () => {
@@ -21,11 +20,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstallable, setIsInstallable] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
-
- 
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -34,6 +28,7 @@ const Login = () => {
       const response = await axios.post('https://shoppeappnow.com/api/auth/login', { username, password });
       const { token } = response.data;
       localStorage.setItem('token', token);
+      localStorage.setItem('isLoggedIn', 'true'); // Set login state in local storage
       navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
@@ -110,22 +105,7 @@ const Login = () => {
             >
               Sign in with Google
             </Button>
-           
-              <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                sx={{ mt: 1, mb: 2 }}
-                
-              >
-                Add to Home Screen
-              </Button>
             <Grid container>
-              {/* <Grid item xs>
-                <Link href="#" variant="body2">
-                  Forgot password?
-                </Link>
-              </Grid> */}
               <Grid item>
                 <Link href="/register" variant="body2">
                   {"Don't have an account? Sign Up"}

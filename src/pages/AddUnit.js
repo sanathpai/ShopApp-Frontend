@@ -76,6 +76,8 @@ const AddUnit = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+  
+    // Validation for default case
     if (isDefault) {
       if (!buying_unit_type || !selling_unit_type || !conversionRate) {
         setSnackbarMessage('Please enter both Buying and Selling Unit Types and Conversion Rate');
@@ -84,6 +86,7 @@ const AddUnit = () => {
         return;
       }
     } else {
+      // Validation for non-default case
       if (!newUnitType || !selectedExistingUnit || !conversionRate) {
         setSnackbarMessage('Please enter the new unit type, select an existing unit, and provide a conversion rate');
         setSnackbarSeverity('error');
@@ -91,8 +94,9 @@ const AddUnit = () => {
         return;
       }
     }
-
+  
     try {
+      // Construct unit data based on the conversion direction
       const unitData = isDefault
         ? {
             product_id,
@@ -103,27 +107,35 @@ const AddUnit = () => {
             prepackaged,
             prepackaged_b
           }
+        : conversionDirection === 'buying'
+        ? {
+            product_id,
+            buying_unit_size: 1,
+            selling_unit_size: conversionRate,
+            buying_unit_type: newUnitType,
+            selling_unit_type: selectedExistingUnit,
+            prepackaged,
+            prepackaged_b
+          }
         : {
             product_id,
-            buying_unit_size: conversionDirection === 'buying' ? 1 : conversionRate,
-            selling_unit_size: conversionDirection === 'buying' ? conversionRate : 1,
-            buying_unit_type: conversionDirection === 'buying' ? newUnitType : selectedExistingUnit,
-            selling_unit_type: conversionDirection === 'buying' ? selectedExistingUnit : newUnitType,
+            buying_unit_size: 1/conversionRate,
+            selling_unit_size: 1,
+            buying_unit_type: newUnitType,
+            selling_unit_type: selectedExistingUnit,
             prepackaged,
             prepackaged_b
           };
-
-      if (!isDefault && conversionDirection === 'selling') {
-        unitData.buying_unit_size = 1;
-        unitData.selling_unit_size = conversionRate;
-        unitData.buying_unit_type = selectedExistingUnit;
-        unitData.selling_unit_type = newUnitType;
-      }
-
+  
+      // Send the data to the backend
       await axiosInstance.post('/units', unitData);
+  
+      // Show success message
       setSnackbarMessage('Unit added successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
+  
+      // Reset the form fields
       setProductId('');
       setBuyingUnitType('');
       setSellingUnitType('');
@@ -133,11 +145,15 @@ const AddUnit = () => {
       setSelectedExistingUnit('');
       setConversionRate('');
     } catch (error) {
+      // Show error message
       setSnackbarMessage('Error adding unit: ' + (error.response ? error.response.data.error : error.message));
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
   };
+  
+  
+  
 
   const handleSnackbarClose = (event, reason) => {
     if (reason === 'clickaway') {
@@ -293,7 +309,7 @@ const AddUnit = () => {
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
-                            label="Enter the number of selling unit per buying unit"
+                            label={`Enter the number of ${conversionDirection === 'buying' ? 'buying' : 'selling'} unit per existing unit`}
                             variant="outlined"
                             fullWidth
                             value={conversionRate}
