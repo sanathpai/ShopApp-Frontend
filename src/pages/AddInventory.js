@@ -20,8 +20,8 @@ const AddInventory = () => {
   const [productDetails, setProductDetails] = useState('');
   const [currentStock, setCurrentStock] = useState('');
   const [products, setProducts] = useState([]);
-  const [unitTypes, setUnitTypes] = useState([]);
-  const [unitType, setUnitType] = useState('');
+  const [units, setUnits] = useState([]); // List of units
+  const [unitId, setUnitId] = useState(''); // Changed to store the unit_id
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -47,11 +47,8 @@ const AddInventory = () => {
     if (product) {
       try {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
-        const units = unitsResponse.data;
-
-        // Combine buying_unit_type and selling_unit_type into a single list without duplicates
-        const combinedUnits = [...new Set(units.flatMap(unit => [unit.buying_unit_type, unit.selling_unit_type]))];
-        setUnitTypes(combinedUnits);
+        const fetchedUnits = unitsResponse.data;
+        setUnits(fetchedUnits); // Set units for this product
       } catch (error) {
         console.error('Error fetching units:', error);
       }
@@ -66,14 +63,14 @@ const AddInventory = () => {
         product_name: productName,
         variety: variety,
         current_stock: currentStock,
-        unit_type: unitType
+        unit_id: unitId // Use unit_id to send to the backend
       });
       setSnackbarMessage('Inventory added successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
       setProductDetails('');
       setCurrentStock('');
-      setUnitType('');
+      setUnitId(''); // Reset unit_id
     } catch (error) {
       console.error('Error adding inventory:', error);
       setSnackbarMessage('Error adding inventory');
@@ -105,16 +102,18 @@ const AddInventory = () => {
                   ))}
                 </Select>
               </FormControl>
+
               <FormControl fullWidth required>
-                <InputLabel>Unit Type</InputLabel>
-                <Select value={unitType} onChange={(e) => setUnitType(e.target.value)}>
-                  {unitTypes.map((unit) => (
-                    <MenuItem key={unit} value={unit}>
-                      {unit}
+                <InputLabel>Unit</InputLabel>
+                <Select value={unitId} onChange={(e) => setUnitId(e.target.value)}>
+                  {units.map((unit) => (
+                    <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                      {unit.unit_type} ({unit.unit_category}) 
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
+
               <TextField
                 label="Current Stock"
                 type="number"
@@ -123,6 +122,7 @@ const AddInventory = () => {
                 fullWidth
                 required
               />
+              
               <Button type="submit" variant="contained" color="primary">
                 Add Inventory
               </Button>
@@ -130,6 +130,7 @@ const AddInventory = () => {
           </form>
         </CardContent>
       </Card>
+
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}

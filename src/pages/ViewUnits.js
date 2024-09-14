@@ -36,6 +36,7 @@ const ViewUnits = () => {
     const fetchUnits = async () => {
       try {
         const response = await axiosInstance.get('/units');
+        console.log(response.data); 
         setUnits(response.data);
       } catch (error) {
         console.error('Error fetching units:', error);
@@ -96,10 +97,11 @@ const ViewUnits = () => {
               <CardContent>
                 <Typography variant="h6">{unit.product_name || 'Product Name Unavailable'}</Typography>
                 {unit.variety && <Typography variant="body2">Variety: {unit.variety}</Typography>}
-                <Typography variant="body2">Buying Unit Size: {unit.buying_unit_size}</Typography>
-                <Typography variant="body2">Buying Unit Type: {unit.buying_unit_type}</Typography>
-                <Typography variant="body2">Selling Unit Size: {unit.selling_unit_size}</Typography>
-                <Typography variant="body2">Selling Unit Type: {unit.selling_unit_type}</Typography>
+                <Typography variant="body2">Unit Type: {unit.unit_type}</Typography>
+                <Typography variant="body2">Unit Category: {unit.unit_category}</Typography>
+                {/* Display the name of the opposite unit */}
+                <Typography variant="body2">Unit compared to: {unit.opposite_unit_type || 'N/A'}</Typography>
+                <Typography variant="body2">conversion factor between this unit and compared unit: {unit.conversion_rate ? unit.conversion_rate : 'N/A'}</Typography>
                 <Typography variant="body2">Prepackaged: {unit.prepackaged ? 'Yes' : 'No'}</Typography>
               </CardContent>
               <CardActions>
@@ -139,10 +141,10 @@ const ViewUnits = () => {
             <>
               <Typography variant="body1">Product Name: {selectedUnit.product_name}</Typography>
               {selectedUnit.variety && <Typography variant="body1">Variety: {selectedUnit.variety}</Typography>}
-              <Typography variant="body1">Buying Unit Size: {selectedUnit.buying_unit_size}</Typography>
-              <Typography variant="body1">Buying Unit Type: {selectedUnit.buying_unit_type}</Typography>
-              <Typography variant="body1">Selling Unit Size: {selectedUnit.selling_unit_size}</Typography>
-              <Typography variant="body1">Selling Unit Type: {selectedUnit.selling_unit_type}</Typography>
+              <Typography variant="body1">Unit Type: {selectedUnit.unit_type}</Typography>
+              <Typography variant="body1">Unit Category: {selectedUnit.unit_category}</Typography>
+              {/* Display the opposite unit name */}
+              <Typography variant="body1">Opposite Unit: {selectedUnit.opposite_unit_type ? selectedUnit.opposite_unit_type : 'N/A'}</Typography>
               <Typography variant="body1">Prepackaged: {selectedUnit.prepackaged ? 'Yes' : 'No'}</Typography>
             </>
           )}

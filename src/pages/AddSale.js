@@ -17,25 +17,25 @@ import {
 } from '@mui/material';
 
 const AddSale = () => {
-  const [offerings, setOfferings] = useState([]);
   const [products, setProducts] = useState([]);
   const [unitTypes, setUnitTypes] = useState([]);
   const [retailPrice, setRetailPrice] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]); // Set default to today's date
-  const [selectedUnitType, setSelectedUnitType] = useState('');
+  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]); // Default to today's date
+  const [selectedUnitId, setSelectedUnitId] = useState('');  // Updated to use unit_id instead of unit_type
   const [productDetails, setProductDetails] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
+  // Fetch products when the component is mounted
   useEffect(() => {
     const fetchData = async () => {
       try {
         const productsResponse = await axiosInstance.get('/products');
         setProducts(productsResponse.data);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching products:', error);
       }
     };
 
@@ -52,8 +52,11 @@ const AddSale = () => {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
         const units = unitsResponse.data;
 
-        const combinedUnits = [...new Set(units.flatMap(unit => [unit.buying_unit_type, unit.selling_unit_type]))];
-        setUnitTypes(combinedUnits);
+        // Now we map unit IDs instead of unit types
+        setUnitTypes(units.map(unit => ({
+          unit_type: unit.unit_type,
+          unit_id: unit.unit_id
+        })));
       } catch (error) {
         console.error('Error fetching units:', error);
       }
@@ -71,14 +74,14 @@ const AddSale = () => {
         retail_price: retailPrice,
         quantity: quantity,
         sale_date: saleDate,
-        unit_type: selectedUnitType
+        unit_id: selectedUnitId  // Changed to use unit_id instead of unit_type
       });
       setSnackbarMessage('Sale added successfully!');
       setSnackbarSeverity('success');
       setRetailPrice('');
       setQuantity('');
       setSaleDate(new Date().toISOString().split('T')[0]); // Reset to today's date
-      setSelectedUnitType('');
+      setSelectedUnitId('');
       setProductDetails('');
     } catch (error) {
       console.error('Error adding sale:', error);
@@ -114,10 +117,13 @@ const AddSale = () => {
               </FormControl>
               <FormControl fullWidth required>
                 <InputLabel>Unit Type</InputLabel>
-                <Select value={selectedUnitType} onChange={(e) => setSelectedUnitType(e.target.value)}>
+                <Select
+                  value={selectedUnitId}
+                  onChange={(e) => setSelectedUnitId(e.target.value)}
+                >
                   {unitTypes.map((unit) => (
-                    <MenuItem key={unit} value={unit}>
-                      {unit}
+                    <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                      {unit.unit_type}
                     </MenuItem>
                   ))}
                 </Select>

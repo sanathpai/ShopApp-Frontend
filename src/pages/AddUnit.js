@@ -11,11 +11,11 @@ import {
   CardContent,
   Snackbar,
   Alert,
-  RadioGroup,
   FormControlLabel,
-  Radio,
+  Switch,
+  RadioGroup,
   FormControl,
-  Switch
+  Radio
 } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
 import { useLocation } from 'react-router-dom';
@@ -34,11 +34,12 @@ const AddUnit = () => {
   const [newUnitType, setNewUnitType] = useState('');
   const [selectedExistingUnit, setSelectedExistingUnit] = useState('');
   const [conversionRate, setConversionRate] = useState('');
-  const [conversionDirection, setConversionDirection] = useState('buying'); // 'buying' or 'selling'
-  const [isDefault, setIsDefault] = useState(false);
-  
+  const [isAddingNewUnit, setIsAddingNewUnit] = useState(false);
+  const [unitCategory, setUnitCategory] = useState('buying'); // Add state to handle buying or selling radio button
+
   const location = useLocation();
-  
+
+  // Fetch products when the component loads
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -51,6 +52,7 @@ const AddUnit = () => {
     fetchProducts();
   }, []);
 
+  // Get the product ID from query params if available
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const productIdFromParams = queryParams.get('product_id');
@@ -59,13 +61,20 @@ const AddUnit = () => {
     }
   }, [location]);
 
+  // Fetch units based on the selected product
   useEffect(() => {
     if (product_id) {
       const fetchUnits = async () => {
         try {
           const response = await axiosInstance.get(`/units/product/${product_id}`);
           setExistingUnits(response.data);
-          setIsDefault(response.data.length === 0 || (response.data[0].buying_unit_type === 'default' && response.data[0].selling_unit_type === 'default'));
+
+          // Check if units already exist for this product
+          if (response.data.length > 0) {
+            setIsAddingNewUnit(true); // This means there are existing units, so show the new unit form
+          } else {
+            setIsAddingNewUnit(false); // No existing units, show the full form for adding both buying and selling units
+          }
         } catch (error) {
           console.error('Error fetching units:', error);
         }
@@ -76,65 +85,43 @@ const AddUnit = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-  
-    // Validation for default case
-    if (isDefault) {
-      if (!buying_unit_type || !selling_unit_type || !conversionRate) {
-        setSnackbarMessage('Please enter both Buying and Selling Unit Types and Conversion Rate');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        return;
-      }
-    } else {
-      // Validation for non-default case
-      if (!newUnitType || !selectedExistingUnit || !conversionRate) {
-        setSnackbarMessage('Please enter the new unit type, select an existing unit, and provide a conversion rate');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        return;
-      }
+    console.log("Conversion rate before submit:", conversionRate);
+    // Validate required fields
+    if ((!isAddingNewUnit && (!buying_unit_type || !selling_unit_type)) || !conversionRate) {
+      setSnackbarMessage('Please enter all required fields');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
     }
-  
+
     try {
-      // Construct unit data based on the conversion direction
-      const unitData = isDefault
+      // Construct unit data based on whether it's the first time adding or adding a new unit
+      const unitData = isAddingNewUnit
         ? {
             product_id,
-            buying_unit_size: 1,
-            selling_unit_size: conversionRate,
-            buying_unit_type,
-            selling_unit_type,
+            newUnitType,
+            selectedExistingUnit,
+            conversion_rate: conversionRate,
             prepackaged,
-            prepackaged_b
-          }
-        : conversionDirection === 'buying'
-        ? {
-            product_id,
-            buying_unit_size: 1,
-            selling_unit_size: conversionRate,
-            buying_unit_type: newUnitType,
-            selling_unit_type: selectedExistingUnit,
-            prepackaged,
-            prepackaged_b
+            unitCategory // Add the unitCategory for buying/selling selection
           }
         : {
             product_id,
-            buying_unit_size: 1/conversionRate,
-            selling_unit_size: 1,
-            buying_unit_type: newUnitType,
-            selling_unit_type: selectedExistingUnit,
+            buying_unit_type,
+            selling_unit_type,
+            conversion_rate: conversionRate,
             prepackaged,
-            prepackaged_b
+            prepackaged_b,
           };
-  
+
       // Send the data to the backend
       await axiosInstance.post('/units', unitData);
-  
+
       // Show success message
       setSnackbarMessage('Unit added successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-  
+
       // Reset the form fields
       setProductId('');
       setBuyingUnitType('');
@@ -151,9 +138,6 @@ const AddUnit = () => {
       setSnackbarOpen(true);
     }
   };
-  
-  
-  
 
   const handleSnackbarClose = (event, reason) => {
     if (reason === 'clickaway') {
@@ -166,7 +150,7 @@ const AddUnit = () => {
     <Container maxWidth="md">
       <Box sx={{ mt: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Add Unit
+          {isAddingNewUnit ? 'Add New Unit' : 'Add Unit'}
         </Typography>
         <Card>
           <CardContent>
@@ -191,12 +175,10 @@ const AddUnit = () => {
                 </Grid>
                 {product_id && (
                   <>
-                    {isDefault ? (
+                    {!isAddingNewUnit ? (
                       <>
                         <Grid item xs={12}>
-                          <Typography variant="subtitle1">
-                            Buying Information
-                          </Typography>
+                          <Typography variant="subtitle1">Buying Information</Typography>
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
@@ -221,9 +203,7 @@ const AddUnit = () => {
                           />
                         </Grid>
                         <Grid item xs={12}>
-                          <Typography variant="subtitle1">
-                            Selling Information
-                          </Typography>
+                          <Typography variant="subtitle1">Selling Information</Typography>
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
@@ -249,7 +229,7 @@ const AddUnit = () => {
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
-                            label="Enter the number of selling units per buying unit."
+                            label="Enter the conversion rate between the first and second unit"
                             variant="outlined"
                             fullWidth
                             value={conversionRate}
@@ -270,46 +250,53 @@ const AddUnit = () => {
                             required
                           />
                         </Grid>
+                        {/* Radio Button for Buying or Selling Unit */}
                         <Grid item xs={12}>
-                          <Typography variant="subtitle1">
-                            Is the new unit a buying unit or a selling unit?
-                          </Typography>
+                          <Typography variant="subtitle1">Is the New Unit Buying or Selling?</Typography>
                           <FormControl component="fieldset">
                             <RadioGroup
                               row
-                              value={conversionDirection}
-                              onChange={(e) => setConversionDirection(e.target.value)}
+                              value={unitCategory}
+                              onChange={(e) => setUnitCategory(e.target.value)}
                             >
-                              <FormControlLabel value="buying" control={<Radio />} label="Buying Unit" />
-                              <FormControlLabel value="selling" control={<Radio />} label="Selling Unit" />
+                              <FormControlLabel value="buying" control={<Radio />} label="Buying" />
+                              <FormControlLabel value="selling" control={<Radio />} label="Selling" />
                             </RadioGroup>
                           </FormControl>
+                        </Grid>
+                        {/* Prepackaged Toggle for the New Unit */}
+                        <Grid item xs={12}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={prepackaged}
+                                onChange={(e) => setPrepackaged(e.target.checked)}
+                                color="primary"
+                              />
+                            }
+                            label="Prepackaged (New Unit)"
+                          />
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
                             select
-                            label="Select Existing Unit"
+                            label="Select Existing Unit for Comparison"
                             variant="outlined"
                             fullWidth
                             value={selectedExistingUnit}
                             onChange={(e) => setSelectedExistingUnit(e.target.value)}
                             required
                           >
-                            {[...new Set(existingUnits.map((unit) => unit.buying_unit_type))].map((unitType, index) => (
-                              <MenuItem key={index} value={unitType}>
-                                {unitType}
-                              </MenuItem>
-                            ))}
-                            {[...new Set(existingUnits.map((unit) => unit.selling_unit_type))].map((unitType, index) => (
-                              <MenuItem key={index} value={unitType}>
-                                {unitType}
+                            {existingUnits.map((unit) => (
+                              <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                                {unit.unit_type} ({unit.unit_category})
                               </MenuItem>
                             ))}
                           </TextField>
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
-                            label={`Enter the number of ${conversionDirection === 'buying' ? 'buying' : 'selling'} unit per existing unit`}
+                            label="Enter the conversion rate between the first and second unit:"
                             variant="outlined"
                             fullWidth
                             value={conversionRate}

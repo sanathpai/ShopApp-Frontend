@@ -34,6 +34,7 @@ import AddSale from './pages/AddSale';
 import EditSale from './pages/EditSale';
 import ViewSales from './pages/ViewSales';
 import ReconcileInventory from './pages/ReconcileInventory';
+import TestPage from './pages/testPage';
 import PrivateRoute from './components/PrivateRoute';
 
 import { ShopProvider } from './context/ShopContext';
@@ -46,6 +47,7 @@ const App = () => {
         <CssBaseline />
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/testpage" element={<TestPage />} />
             <Route path="/register" element={<Register />} />
             <Route element={<PrivateRoute />}>
               <Route path="/dashboard" element={<DashboardLayout />}>

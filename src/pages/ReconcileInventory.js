@@ -4,9 +4,9 @@ import { Container, TextField, Button, Box, Typography, Snackbar, Alert } from '
 import { useParams } from 'react-router-dom';
 
 const ReconcileInventory = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // Extract inventory ID from URL
   const [inventory, setInventory] = useState({});
-  const [actualStock, setActualStock] = useState('');
+  const [actualStock, setActualStock] = useState(''); // For entering the actual stock
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -14,7 +14,7 @@ const ReconcileInventory = () => {
   useEffect(() => {
     const fetchInventory = async () => {
       try {
-        const response = await axiosInstance.get(`/inventories/${id}`);
+        const response = await axiosInstance.get(`/inventories/${id}`); // Fetch the inventory using the ID
         setInventory(response.data);
       } catch (error) {
         console.error('Error fetching inventory:', error);
@@ -29,9 +29,17 @@ const ReconcileInventory = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isNaN(actualStock) || actualStock === '') {
+      setSnackbarMessage('Please enter a valid stock number');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
     try {
       await axiosInstance.post(`/inventories/reconcile/${id}`, {
         actual_stock: actualStock,
+        actual_unit_id: inventory.unit_id,
       });
       setSnackbarMessage('Inventory reconciled successfully!');
       setSnackbarSeverity('success');
@@ -55,6 +63,7 @@ const ReconcileInventory = () => {
           Reconcile Inventory
         </Typography>
         <form onSubmit={handleSubmit}>
+          {/* Product Information */}
           <TextField
             label="Product Name"
             variant="outlined"
@@ -63,6 +72,7 @@ const ReconcileInventory = () => {
             value={`${inventory.product_name || ''} - ${inventory.variety || ''}`}
             disabled
           />
+          {/* Current Stock */}
           <TextField
             label="Current Stock"
             variant="outlined"
@@ -71,6 +81,7 @@ const ReconcileInventory = () => {
             value={inventory.current_stock || ''}
             disabled
           />
+          {/* Unit Type */}
           <TextField
             label="Unit Type"
             variant="outlined"
@@ -79,6 +90,7 @@ const ReconcileInventory = () => {
             value={inventory.unit_type || ''}
             disabled
           />
+          {/* Actual Stock to be reconciled */}
           <TextField
             label="Actual Stock"
             variant="outlined"
@@ -88,11 +100,13 @@ const ReconcileInventory = () => {
             onChange={(e) => setActualStock(e.target.value)}
             required
           />
+          {/* Submit Button */}
           <Button type="submit" variant="contained" color="primary">
             Reconcile Inventory
           </Button>
         </form>
       </Box>
+      {/* Snackbar to show success or error messages */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}

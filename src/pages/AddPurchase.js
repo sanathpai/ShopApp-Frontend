@@ -59,7 +59,8 @@ const AddPurchase = () => {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
         const units = unitsResponse.data;
 
-        const combinedUnits = [...new Set(units.flatMap(unit => [unit.buying_unit_type, unit.selling_unit_type]))];
+        // Ensure we have a unique list of unit types
+        const combinedUnits = [...new Set(units.map(unit => ({ id: unit.unit_id, type: unit.unit_type })))];
         setUnitTypes(combinedUnits);
       } catch (error) {
         console.error('Error fetching units:', error);
@@ -72,6 +73,9 @@ const AddPurchase = () => {
 
     const selectedSourceDetails = sources.find(source => source.name === selectedSource);
     const [productName, variety] = productDetails.split(' - ');
+    
+    // Fetch the unit id corresponding to the selected unit type
+    const selectedUnit = unitTypes.find(unit => unit.type === selectedUnitType);
 
     try {
       await axiosInstance.post('/purchases', {
@@ -82,7 +86,7 @@ const AddPurchase = () => {
         order_price: orderPrice,
         quantity: quantity,
         purchase_date: purchaseDate,
-        unit_type: selectedUnitType
+        unit_id: selectedUnit.id  // Send the unit id, not the type
       });
       setSnackbarMessage('Purchase added successfully!');
       setSnackbarSeverity('success');
@@ -132,8 +136,8 @@ const AddPurchase = () => {
                 <InputLabel>Unit Type</InputLabel>
                 <Select value={selectedUnitType} onChange={(e) => setSelectedUnitType(e.target.value)}>
                   {unitTypes.map((unit) => (
-                    <MenuItem key={unit} value={unit}>
-                      {unit}
+                    <MenuItem key={unit.id} value={unit.type}>
+                      {unit.type}
                     </MenuItem>
                   ))}
                 </Select>
