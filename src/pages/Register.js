@@ -61,7 +61,7 @@ const Register = () => {
       return;
     }
     try {
-      await axios.post('http://localhost:5000/api/auth/register', formData);
+      await axios.post('https://shoppeappnow.com/api/auth/register', formData);
       setOpen(true);
       setTimeout(() => {
         navigate('/login');
