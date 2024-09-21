@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../AxiosInstance';
-import { 
-  Container, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Paper, 
+import {
+  Container,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
   Typography,
   TablePagination,
   Button,
   Snackbar,
+  MenuItem,
+  Select,
+  FormControl,
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
@@ -31,21 +34,51 @@ const ViewInventories = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [openSuccessSnackbar, setOpenSuccessSnackbar] = useState(false);
   const [openErrorSnackbar, setOpenErrorSnackbar] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Fetch inventories
     const fetchInventories = async () => {
       try {
         const response = await axiosInstance.get('/inventories');
-        console.log("Fetched Inventories:", response.data);
         setInventories(response.data);
       } catch (error) {
+        setErrorMessage('Failed to fetch inventories. Please try again.');
+        setOpenErrorSnackbar(true);
         console.error('Error fetching inventories:', error);
       }
     };
 
-    fetchInventories();
-  }, []);
+    // Initial fetch
+    if (isOnline) {
+      fetchInventories();
+    }
+
+    // Event listeners for network status
+    const handleOnline = () => {
+      setIsOnline(true);
+      setErrorMessage('Network is back online. Updating data...');
+      setOpenSuccessSnackbar(true);
+      fetchInventories(); // Refetch data when back online
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      setErrorMessage('You are offline. Some actions may not be available.');
+      setOpenErrorSnackbar(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Cleanup listeners on unmount
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isOnline]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -57,18 +90,59 @@ const ViewInventories = () => {
   };
 
   const handleDeleteClick = async (inventoryId) => {
+    if (!isOnline) {
+      setErrorMessage('Cannot delete inventory while offline.');
+      setOpenErrorSnackbar(true);
+      return;
+    }
+
     try {
       await axiosInstance.delete(`/inventories/${inventoryId}`);
       setInventories(inventories.filter(inv => inv.inventory_id !== inventoryId));
       setOpenSuccessSnackbar(true);
+      setErrorMessage('Inventory deleted successfully.');
     } catch (error) {
-      console.error('Error deleting inventory:', error);
+      setErrorMessage('Failed to delete inventory. Please try again.');
       setOpenErrorSnackbar(true);
+      console.error('Error deleting inventory:', error);
     }
   };
 
   const handleReconcileClick = (inventoryId) => {
     navigate(`/dashboard/inventories/reconcile/${inventoryId}`);
+  };
+
+  // Handle unit conversion
+  const handleUnitConversion = async (inventoryId, toUnitId) => {
+    if (!isOnline) {
+      setErrorMessage('Cannot convert units while offline.');
+      setOpenErrorSnackbar(true);
+      return;
+    }
+
+    const inventory = inventories.find(inv => inv.inventory_id === inventoryId);
+    if (!inventory) return;
+
+    try {
+      const response = await axiosInstance.post('/inventories/convert', {
+        quantity: inventory.current_stock,
+        fromUnitId: inventory.unit_id,
+        toUnitId: toUnitId
+      });
+
+      const { convertedQuantity } = response.data;
+
+      setInventories(inventories.map(inv =>
+        inv.inventory_id === inventoryId ? { ...inv, current_stock: convertedQuantity, unit_id: toUnitId } : inv
+      ));
+
+      setOpenSuccessSnackbar(true);
+      setErrorMessage('Conversion completed successfully.');
+    } catch (error) {
+      setErrorMessage('Error converting units. Please try again.');
+      setOpenErrorSnackbar(true);
+      console.error('Error converting units:', error);
+    }
   };
 
   const handleCloseSnackbar = () => {
@@ -88,7 +162,7 @@ const ViewInventories = () => {
               <StyledTableCell>Shop Name</StyledTableCell>
               <StyledTableCell>Product Name</StyledTableCell>
               <StyledTableCell>Current Stock</StyledTableCell>
-              <StyledTableCell>Unit Type</StyledTableCell> {/* Display Unit Type */}
+              <StyledTableCell>Unit Type</StyledTableCell>
               <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
@@ -97,8 +171,31 @@ const ViewInventories = () => {
               <TableRow key={inventory.inventory_id}>
                 <TableCell>{inventory.shop_name}</TableCell>
                 <TableCell>{`${inventory.product_name} - ${inventory.variety}`}</TableCell>
-                <TableCell>{inventory.current_stock}</TableCell>
-                <TableCell>{inventory.unit_type}</TableCell> {/* Directly display unit_type */}
+                <TableCell>
+                  {typeof inventory.current_stock === 'number' ? 
+                    inventory.current_stock.toFixed(2) : 
+                    parseFloat(inventory.current_stock).toFixed(2)}
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <Select
+                      value={inventory.unit_id}
+                      onChange={(e) => handleUnitConversion(inventory.inventory_id, e.target.value)}
+                    >
+                      {inventory.available_units && inventory.available_units.length > 0 ? (
+                        inventory.available_units.map(unit => (
+                          <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                            {`${unit.unit_type} (${unit.unit_category})`}
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem value="" disabled>
+                          No units available
+                        </MenuItem>
+                      )}
+                    </Select>
+                  </FormControl>
+                </TableCell>
                 <TableCell>
                   <Button color="secondary" onClick={() => handleDeleteClick(inventory.inventory_id)}>Delete</Button>
                   <Button color="primary" onClick={() => handleReconcileClick(inventory.inventory_id)}>Reconcile</Button>
@@ -118,21 +215,12 @@ const ViewInventories = () => {
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
       <Snackbar
-        open={openSuccessSnackbar}
+        open={openSuccessSnackbar || openErrorSnackbar}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
       >
-        <MuiAlert elevation={6} variant="filled" onClose={handleCloseSnackbar} severity="success">
-          Inventory updated successfully!
-        </MuiAlert>
-      </Snackbar>
-      <Snackbar
-        open={openErrorSnackbar}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <MuiAlert elevation={6} variant="filled" onClose={handleCloseSnackbar} severity="error">
-          Error updating inventory!
+        <MuiAlert elevation={6} variant="filled" onClose={handleCloseSnackbar} severity={openSuccessSnackbar ? 'success' : 'error'}>
+          {errorMessage}
         </MuiAlert>
       </Snackbar>
     </Container>

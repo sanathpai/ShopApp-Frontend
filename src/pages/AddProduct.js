@@ -12,10 +12,12 @@ const AddProduct = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [searchResults, setSearchResults] = useState([]);
+  const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (productName.length > 2) {
+    // Fetch search results if product name length > 2
+    if (productName.length > 2 && isOnline) { // Check network status before API call
       axiosInstance.get(`/products/search?q=${productName}`)
         .then(response => {
           const uniqueResults = response.data.reduce((acc, product) => {
@@ -29,11 +31,41 @@ const AddProduct = () => {
         })
         .catch(error => {
           console.error('Error fetching search results:', error);
+          setSnackbarMessage('Error fetching search results. ' + (error.response ? error.response.data.error : error.message));
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
         });
     } else {
       setSearchResults([]);
     }
-  }, [productName]);
+  }, [productName, isOnline]); // Include isOnline in dependency array
+
+  useEffect(() => {
+    // Handle network status changes
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSnackbarMessage('You are back online.');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      setSnackbarMessage('You are offline. Please check your network connection.');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+    };
+
+    // Add event listeners for network status
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Cleanup listeners on component unmount
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleSelectProduct = (product) => {
     setProductName(product.product_name);
@@ -45,6 +77,15 @@ const AddProduct = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Check if the app is offline
+    if (!isOnline) {
+      setSnackbarMessage('You are offline. Cannot add product.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
     try {
       const response = await axiosInstance.post('/products', {
         product_name: productName,
@@ -53,7 +94,7 @@ const AddProduct = () => {
         description,
       });
 
-      setSnackbarMessage('Product added successfully');
+      setSnackbarMessage('Product added successfully.');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
 

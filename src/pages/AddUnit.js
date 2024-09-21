@@ -229,7 +229,7 @@ const AddUnit = () => {
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
-                            label="Enter the conversion rate between the first and second unit"
+                            label={`Please Enter How many ${selling_unit_type || 'second unit type'} are there in ${buying_unit_type || 'first unit type'}?`}
                             variant="outlined"
                             fullWidth
                             value={conversionRate}
@@ -296,7 +296,7 @@ const AddUnit = () => {
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
-                            label="Enter the conversion rate between the first and second unit:"
+                           label={`Please Enter How many ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selected unit type'} are there in ${newUnitType || 'new unit type'}?`}
                             variant="outlined"
                             fullWidth
                             value={conversionRate}
