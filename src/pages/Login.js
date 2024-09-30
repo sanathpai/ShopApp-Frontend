@@ -114,6 +114,12 @@ const Login = () => {
             </Grid>
           </Box>
         </Box>
+        {/* Footer for Copyright and Version */}
+        <Box sx={{ mt: 8, mb: 4 }} align="center">
+          <Typography variant="body2" color="text.secondary">
+            &copy; {new Date().getFullYear()} UCSC (Version: 8.2)
+          </Typography>
+        </Box>
       </Container>
     </ThemeProvider>
   );

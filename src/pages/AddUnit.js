@@ -112,6 +112,7 @@ const AddUnit = () => {
             conversion_rate: conversionRate,
             prepackaged,
             prepackaged_b,
+            unitCategory
           };
 
       // Send the data to the backend
@@ -257,7 +258,10 @@ const AddUnit = () => {
                             <RadioGroup
                               row
                               value={unitCategory}
-                              onChange={(e) => setUnitCategory(e.target.value)}
+                              onChange={(e) => {
+                                console.log('Selected category:', e.target.value); // Debugging line to check what's being selected
+                                setUnitCategory(e.target.value);
+                              }}
                             >
                               <FormControlLabel value="buying" control={<Radio />} label="Buying" />
                               <FormControlLabel value="selling" control={<Radio />} label="Selling" />

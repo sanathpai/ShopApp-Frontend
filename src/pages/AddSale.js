@@ -52,10 +52,11 @@ const AddSale = () => {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
         const units = unitsResponse.data;
 
-        // Now we map unit IDs instead of unit types
+        // Now we map unit IDs along with unit types and categories
         setUnitTypes(units.map(unit => ({
-          unit_type: unit.unit_type,
-          unit_id: unit.unit_id
+          unit_type: `${unit.unit_type} (${unit.unit_category})`,
+          unit_id: unit.unit_id,
+          unit_category: unit.unit_category
         })));
       } catch (error) {
         console.error('Error fetching units:', error);
@@ -67,6 +68,9 @@ const AddSale = () => {
     e.preventDefault();
     const [productName, variety] = productDetails.split(' - ');
 
+    // Find the selected unit details
+    const selectedUnit = unitTypes.find(unit => unit.unit_id === selectedUnitId);
+
     try {
       await axiosInstance.post('/sales', {
         product_name: productName,
@@ -74,7 +78,8 @@ const AddSale = () => {
         retail_price: retailPrice,
         quantity: quantity,
         sale_date: saleDate,
-        unit_id: selectedUnitId  // Changed to use unit_id instead of unit_type
+        unit_id: selectedUnitId,  // Use the unit_id
+        unit_category: selectedUnit.unit_category // Include the unit_category
       });
       setSnackbarMessage('Sale added successfully!');
       setSnackbarSeverity('success');
@@ -116,14 +121,14 @@ const AddSale = () => {
                 </Select>
               </FormControl>
               <FormControl fullWidth required>
-                <InputLabel>Unit Type</InputLabel>
+                <InputLabel>Unit Type (Category)</InputLabel>
                 <Select
                   value={selectedUnitId}
                   onChange={(e) => setSelectedUnitId(e.target.value)}
                 >
                   {unitTypes.map((unit) => (
                     <MenuItem key={unit.unit_id} value={unit.unit_id}>
-                      {unit.unit_type}
+                      {unit.unit_type} {/* Display both unit type and category */}
                     </MenuItem>
                   ))}
                 </Select>

@@ -59,9 +59,12 @@ const AddPurchase = () => {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
         const units = unitsResponse.data;
 
-        // Ensure we have a unique list of unit types
-        const combinedUnits = [...new Set(units.map(unit => ({ id: unit.unit_id, type: unit.unit_type })))];
-        setUnitTypes(combinedUnits);
+        // Set the unitTypes with both type and category together
+        setUnitTypes(units.map(unit => ({
+          id: unit.unit_id,
+          type: `${unit.unit_type} (${unit.unit_category})`,
+          unitCategory: unit.unit_category,
+        })));
       } catch (error) {
         console.error('Error fetching units:', error);
       }
@@ -86,7 +89,8 @@ const AddPurchase = () => {
         order_price: orderPrice,
         quantity: quantity,
         purchase_date: purchaseDate,
-        unit_id: selectedUnit.id  // Send the unit id, not the type
+        unit_id: selectedUnit.id, // Send the unit id, not the type
+        unit_category: selectedUnit.unitCategory // Include the unit category in your payload
       });
       setSnackbarMessage('Purchase added successfully!');
       setSnackbarSeverity('success');
@@ -133,11 +137,11 @@ const AddPurchase = () => {
                 </Select>
               </FormControl>
               <FormControl fullWidth required>
-                <InputLabel>Unit Type</InputLabel>
+                <InputLabel>Unit Type (Category)</InputLabel>
                 <Select value={selectedUnitType} onChange={(e) => setSelectedUnitType(e.target.value)}>
                   {unitTypes.map((unit) => (
                     <MenuItem key={unit.id} value={unit.type}>
-                      {unit.type}
+                      {unit.type} {/* Display both unit type and category together */}
                     </MenuItem>
                   ))}
                 </Select>

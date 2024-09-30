@@ -11,10 +11,7 @@ import {
   CardContent,
   Snackbar,
   Alert,
-  RadioGroup,
   FormControlLabel,
-  Radio,
-  FormControl,
   Switch
 } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
@@ -23,20 +20,20 @@ import { useParams, useNavigate } from 'react-router-dom';
 const EditUnit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // State variables for the unit details
   const [product_id, setProductId] = useState('');
-  const [buying_unit_type, setBuyingUnitType] = useState('default');
-  const [selling_unit_type, setSellingUnitType] = useState('default');
+  const [unit_type, setUnitType] = useState(''); // Changed variable name to be more general
+  const [opposite_unit_id, setOppositeUnitId] = useState(''); // Store the selected opposite unit
   const [prepackaged, setPrepackaged] = useState(false);
   const [products, setProducts] = useState([]);
-  const [existingUnits, setExistingUnits] = useState([]);
+  const [existingUnits, setExistingUnits] = useState([]); // For dropdown of existing units
+  const [conversionRate, setConversionRate] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  const [newUnitType, setNewUnitType] = useState('');
-  const [selectedExistingUnit, setSelectedExistingUnit] = useState('');
-  const [conversionRate, setConversionRate] = useState('');
-  const [conversionDirection, setConversionDirection] = useState('buying'); // 'buying' or 'selling'
 
+  // Fetch the data for the product list and unit details
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -51,16 +48,16 @@ const EditUnit = () => {
       try {
         const response = await axiosInstance.get(`/units/${id}`);
         const unit = response.data;
-        setProductId(unit.product_id);
-        setBuyingUnitType(unit.buying_unit_type);
-        setSellingUnitType(unit.selling_unit_type);
-        setPrepackaged(unit.prepackaged);
-        setConversionRate(
-          unit.buying_unit_size !== 1 ? unit.buying_unit_size : unit.selling_unit_size
-        );
-        setConversionDirection(
-          unit.buying_unit_size !== 1 ? 'buying' : 'selling'
-        );
+    
+        console.log('Fetched unit details:', unit);
+    
+        if (unit) {
+          setProductId(unit.product_id || '');
+          setUnitType(unit.unit_type || '');
+          setOppositeUnitId(unit.opposite_unit_id || ''); // Store the opposite unit ID
+          setPrepackaged(unit.prepackaged || false);
+          setConversionRate(unit.conversion_factor || '');
+        }
       } catch (error) {
         console.error('Error fetching unit details:', error);
       }
@@ -70,93 +67,56 @@ const EditUnit = () => {
     fetchUnitDetails();
   }, [id]);
 
+  // Fetch existing units for the selected product
   useEffect(() => {
     if (product_id) {
-      const fetchUnits = async () => {
+      const fetchExistingUnits = async () => {
         try {
           const response = await axiosInstance.get(`/units/product/${product_id}`);
           setExistingUnits(response.data);
         } catch (error) {
-          console.error('Error fetching units:', error);
+          console.error('Error fetching existing units:', error);
         }
       };
 
-      fetchUnits();
+      fetchExistingUnits();
     }
   }, [product_id]);
 
+  // Handle form submission
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (existingUnits.length === 0 || (existingUnits[0].buying_unit_type === 'default' && existingUnits[0].selling_unit_type === 'default')) {
-      if (!buying_unit_type || !selling_unit_type || !conversionRate) {
-        setSnackbarMessage('Please enter both Buying and Selling Unit Types and Conversion Rate');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        return;
-      }
+    try {
+      // Prepare the data to be sent to the backend
+      const updatedUnitData = {
+        product_id,
+        unit_type,
+        unit_category: 'buying', // Assuming 'buying' as default; adjust as needed
+        opposite_unit_id, // Include opposite unit ID
+        prepackaged,
+        conversion_rate: parseFloat(conversionRate)
+      };
 
-      try {
-        const unitData = {
-          product_id,
-          buying_unit_size: 1,
-          selling_unit_size: conversionRate,
-          buying_unit_type,
-          selling_unit_type,
-          prepackaged
-        };
-
-        await axiosInstance.put(`/units/${id}`, unitData);
-        setSnackbarMessage('Unit updated successfully');
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-        navigate('/dashboard/units/view');
-      } catch (error) {
-        setSnackbarMessage('Error updating unit: ' + (error.response ? error.response.data.error : error.message));
-        setSnackbarSeverity('error');
+      const response = await axiosInstance.put(`/units/${id}`, updatedUnitData);
+    
+      if (response.status === 200) {
+        setSnackbarMessage('Unit updated successfully. Please note: You will need to reconcile inventory for the changes to reflect accurately.');
+        setSnackbarSeverity('warning'); // Set the severity to warning for this alert
         setSnackbarOpen(true);
       }
-    } else {
-      if (!selectedExistingUnit || !newUnitType || !conversionRate) {
-        setSnackbarMessage('Please select an existing unit, enter a new unit type, and provide a conversion rate');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        return;
-      }
+      
+      // Redirect to view page after a brief delay
+      setTimeout(() => navigate('/dashboard/units/view'), 3000);
 
-      try {
-        const unitData = {
-          product_id,
-          buying_unit_size: conversionDirection === 'buying' ? 1 : conversionRate,
-          selling_unit_size: conversionDirection === 'buying' ? conversionRate : 1,
-          buying_unit_type: conversionDirection === 'buying' ? selectedExistingUnit : newUnitType,
-          selling_unit_type: conversionDirection === 'buying' ? newUnitType : selectedExistingUnit,
-          prepackaged
-        };
-
-        if (conversionDirection === 'selling') {
-          unitData.buying_unit_size = 1;
-          unitData.selling_unit_size = conversionRate;
-          unitData.buying_unit_type = newUnitType;
-          unitData.selling_unit_type = selectedExistingUnit;
-        }
-
-        await axiosInstance.put(`/units/${id}`, unitData);
-        setSnackbarMessage('Unit updated successfully');
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-        navigate('/dashboard/units/view');
-      } catch (error) {
-        setSnackbarMessage('Error updating unit: ' + (error.response ? error.response.data.error : error.message));
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-      }
+    } catch (error) {
+      setSnackbarMessage('Error updating unit: ' + (error.response ? error.response.data.error : error.message));
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     }
   };
 
   const handleSnackbarClose = (event, reason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
+    if (reason === 'clickaway') return;
     setSnackbarOpen(false);
   };
 
@@ -170,6 +130,7 @@ const EditUnit = () => {
           <CardContent>
             <form onSubmit={handleFormSubmit}>
               <Grid container spacing={2}>
+                {/* Select Product */}
                 <Grid item xs={12}>
                   <TextField
                     select
@@ -187,100 +148,51 @@ const EditUnit = () => {
                     ))}
                   </TextField>
                 </Grid>
-                {existingUnits.length === 0 || (existingUnits[0].buying_unit_type === 'default' && existingUnits[0].selling_unit_type === 'default') ? (
-                  <>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Buying Unit Type"
-                        variant="outlined"
-                        fullWidth
-                        value={buying_unit_type}
-                        onChange={(e) => setBuyingUnitType(e.target.value)}
-                        required
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Selling Unit Type"
-                        variant="outlined"
-                        fullWidth
-                        value={selling_unit_type}
-                        onChange={(e) => setSellingUnitType(e.target.value)}
-                        required
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Enter the number of selling units per buying unit."
-                        variant="outlined"
-                        fullWidth
-                        value={conversionRate}
-                        onChange={(e) => setConversionRate(e.target.value)}
-                        required
-                      />
-                    </Grid>
-                  </>
-                ) : (
-                  <>
-                    <Grid item xs={12}>
-                      <Typography variant="subtitle1">
-                        Is the selected unit a buying unit or selling unit?
-                      </Typography>
-                      <FormControl component="fieldset">
-                        <RadioGroup
-                          row
-                          value={conversionDirection}
-                          onChange={(e) => setConversionDirection(e.target.value)}
-                        >
-                          <FormControlLabel value="buying" control={<Radio />} label="Buying Unit" />
-                          <FormControlLabel value="selling" control={<Radio />} label="Selling Unit" />
-                        </RadioGroup>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        select
-                        label=" Select a Unit from Existing Units"
-                        variant="outlined"
-                        fullWidth
-                        value={selectedExistingUnit}
-                        onChange={(e) => setSelectedExistingUnit(e.target.value)}
-                        required
-                      >
-                        {existingUnits.map((unit) => (
-                          <MenuItem key={unit.unit_id} value={unit.buying_unit_type}>
-                            {unit.buying_unit_type}
-                          </MenuItem>
-                        ))}
-                        {existingUnits.map((unit) => (
-                          <MenuItem key={unit.unit_id} value={unit.selling_unit_type}>
-                            {unit.selling_unit_type}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label={conversionDirection === 'buying' ? "New Selling Unit Type" : "New Buying Unit Type"}
-                        variant="outlined"
-                        fullWidth
-                        value={newUnitType}
-                        onChange={(e) => setNewUnitType(e.target.value)}
-                        required
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Conversion Rate"
-                        variant="outlined"
-                        fullWidth
-                        value={conversionRate}
-                        onChange={(e) => setConversionRate(e.target.value)}
-                        required
-                      />
-                    </Grid>
-                  </>
-                )}
+
+                {/* Unit Type */}
+                <Grid item xs={12}>
+                  <TextField
+                    label="Unit Type"
+                    variant="outlined"
+                    fullWidth
+                    value={unit_type}
+                    onChange={(e) => setUnitType(e.target.value)}
+                    required
+                  />
+                </Grid>
+
+                {/* Dropdown for selecting existing units */}
+                <Grid item xs={12}>
+                  <TextField
+                    select
+                    label="Select Opposite Unit"
+                    variant="outlined"
+                    fullWidth
+                    value={opposite_unit_id}
+                    onChange={(e) => setOppositeUnitId(e.target.value)}
+                    required
+                  >
+                    {existingUnits.map((unit) => (
+                      <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                        {unit.unit_type} ({unit.unit_category})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                {/* Conversion Rate */}
+                <Grid item xs={12}>
+                  <TextField
+                    label={`How many ${existingUnits.find(unit => unit.unit_id === opposite_unit_id)?.unit_type || 'selected unit type'} are there in ${unit_type || 'current unit type'}?`}
+                    variant="outlined"
+                    fullWidth
+                    value={conversionRate}
+                    onChange={(e) => setConversionRate(e.target.value)}
+                    required
+                  />
+                </Grid>
+
+                {/* Prepackaged */}
                 <Grid item xs={12}>
                   <FormControlLabel
                     control={
@@ -293,6 +205,8 @@ const EditUnit = () => {
                     label="Prepackaged"
                   />
                 </Grid>
+
+                {/* Submit Button */}
                 <Grid item xs={12}>
                   <Button type="submit" variant="contained" color="primary">
                     Update Unit
@@ -303,6 +217,8 @@ const EditUnit = () => {
           </CardContent>
         </Card>
       </Box>
+
+      {/* Snackbar Notification */}
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
         <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
           {snackbarMessage}

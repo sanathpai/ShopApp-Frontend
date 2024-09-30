@@ -30,13 +30,15 @@ const ViewUnits = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [selectedUnit, setSelectedUnit] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // New state for delete confirmation dialog
+  const [unitToDelete, setUnitToDelete] = useState(null); // Track the unit to delete
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUnits = async () => {
       try {
         const response = await axiosInstance.get('/units');
-        console.log(response.data); 
+        console.log(response.data);
         setUnits(response.data);
       } catch (error) {
         console.error('Error fetching units:', error);
@@ -47,16 +49,18 @@ const ViewUnits = () => {
   }, []);
 
   const handleEdit = (unit) => {
+    console.log(`Unit id is ${unit.unit_id}`);
     navigate(`/dashboard/units/edit/${unit.unit_id}`);
   };
 
-  const handleDelete = async (unitId) => {
+  const handleDelete = async () => {
     try {
-      await axiosInstance.delete(`/units/${unitId}`);
-      setUnits(units.filter((unit) => unit.unit_id !== unitId));
+      await axiosInstance.delete(`/units/${unitToDelete.unit_id}`);
+      setUnits(units.filter((unit) => unit.unit_id !== unitToDelete.unit_id));
       setSnackbarMessage('Unit deleted successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
+      setDeleteConfirmOpen(false); // Close the confirmation dialog
     } catch (error) {
       setSnackbarMessage('Error deleting unit: ' + (error.response ? error.response.data.error : error.message));
       setSnackbarSeverity('error');
@@ -83,6 +87,16 @@ const ViewUnits = () => {
     setSelectedUnit(null);
   };
 
+  const confirmDelete = (unit) => {
+    setUnitToDelete(unit);
+    setDeleteConfirmOpen(true); // Open the confirmation dialog
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setUnitToDelete(null);
+  };
+
   const paginatedUnits = units.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
   return (
@@ -99,7 +113,6 @@ const ViewUnits = () => {
                 {unit.variety && <Typography variant="body2">Variety: {unit.variety}</Typography>}
                 <Typography variant="body2">Unit Type: {unit.unit_type}</Typography>
                 <Typography variant="body2">Unit Category: {unit.unit_category}</Typography>
-                {/* Display the name of the opposite unit */}
                 <Typography variant="body2">Unit compared to: {unit.opposite_unit_type || 'N/A'}</Typography>
                 <Typography variant="body2">conversion factor between this unit and compared unit: {unit.conversion_rate ? unit.conversion_rate : 'N/A'}</Typography>
                 <Typography variant="body2">Prepackaged: {unit.prepackaged ? 'Yes' : 'No'}</Typography>
@@ -108,7 +121,7 @@ const ViewUnits = () => {
                 <Button variant="contained" color="primary" onClick={() => handleEdit(unit)}>
                   Edit
                 </Button>
-                <Button variant="contained" color="secondary" onClick={() => handleDelete(unit.unit_id)}>
+                <Button variant="contained" color="secondary" onClick={() => confirmDelete(unit)}>
                   Delete
                 </Button>
                 <Tooltip title="View Details">
@@ -143,7 +156,6 @@ const ViewUnits = () => {
               {selectedUnit.variety && <Typography variant="body1">Variety: {selectedUnit.variety}</Typography>}
               <Typography variant="body1">Unit Type: {selectedUnit.unit_type}</Typography>
               <Typography variant="body1">Unit Category: {selectedUnit.unit_category}</Typography>
-              {/* Display the opposite unit name */}
               <Typography variant="body1">Opposite Unit: {selectedUnit.opposite_unit_type ? selectedUnit.opposite_unit_type : 'N/A'}</Typography>
               <Typography variant="body1">Prepackaged: {selectedUnit.prepackaged ? 'Yes' : 'No'}</Typography>
             </>
@@ -152,6 +164,24 @@ const ViewUnits = () => {
         <DialogActions>
           <Button onClick={handleDialogClose} color="primary">
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog for Deletion */}
+      <Dialog open={deleteConfirmOpen} onClose={handleCancelDelete}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            All inventories, purchases, and sales made on these units will be deleted. Are you sure you want to proceed?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="secondary">
+            Confirm
           </Button>
         </DialogActions>
       </Dialog>
