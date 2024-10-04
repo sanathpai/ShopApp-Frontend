@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../AxiosInstance';
-import { Box, Typography, Button, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Typography, Button, useMediaQuery, useTheme, Snackbar, Alert } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -24,6 +24,8 @@ const Overview = () => {
     sales: [],
   });
   const [productColors, setProductColors] = useState({});
+  const [lowStockProducts, setLowStockProducts] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   // Function to generate unique colors for each product
   const generateUniqueColors = (products) => {
@@ -50,7 +52,10 @@ const Overview = () => {
       const fetchData = async () => {
         try {
           const overviewResponse = await axiosInstance.get('/overview');
+          const inventoryResponse = await axiosInstance.get('/inventories'); // Fetch inventories from backend
+
           const { finalProfits, totalQuantities } = overviewResponse.data;
+          const inventoryData = inventoryResponse.data;
 
           const productData = finalProfits.profitsForWeek.map((item, index) => ({
             productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
@@ -84,6 +89,15 @@ const Overview = () => {
           ];
           const colorMap = generateUniqueColors([...new Set(allProducts)]);
           setProductColors(colorMap);
+
+          // Check for low stock products from inventory and set them in state
+          const lowStockItems = inventoryData.filter(
+            (inventory) => inventory.current_stock < inventory.stock_limit
+          );
+          if (lowStockItems.length > 0) {
+            setLowStockProducts(lowStockItems);
+            setSnackbarOpen(true); // Open snackbar if any product is below stock limit
+          }
         } catch (error) {
           console.error('Error fetching data:', error);
         }
@@ -91,6 +105,11 @@ const Overview = () => {
       fetchData();
     }
   }, [navigate]);
+
+  // Close Snackbar
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
 
   // Chart configuration
   const chartContainerStyle = {
@@ -110,12 +129,16 @@ const Overview = () => {
           maxRotation: isMobile ? 90 : 0,
           minRotation: isMobile ? 90 : 0,
           padding: isMobile ? 5 : 10,
-          callback: function(value, index, values) {
+          callback: function (value, index, values) {
             const label = this.getLabelForValue(value);
             return isMobile
-              ? label.length > 6 ? `${label.substring(0, 6)}...` : label
-              : label.length > 6 ? `${label.substring(0, 6)}...` : label;
-          }
+              ? label.length > 6
+                ? `${label.substring(0, 6)}...`
+                : label
+              : label.length > 6
+              ? `${label.substring(0, 6)}...`
+              : label;
+          },
         },
         grid: {
           display: false,
@@ -145,7 +168,7 @@ const Overview = () => {
         left: isMobile ? 10 : 20,
         right: isMobile ? 10 : 20,
         top: isMobile ? 20 : 0,
-      }
+      },
     },
   };
 
@@ -258,6 +281,13 @@ const Overview = () => {
           <Bar data={prepareSalesChartData()} options={options} />
         </Box>
       </Box>
+
+      {/* Snackbar for Low Stock Alerts */}
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity="warning" sx={{ width: '100%' }}>
+          The following products have low stock: {lowStockProducts.map(item => item.productName).join(', ')}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

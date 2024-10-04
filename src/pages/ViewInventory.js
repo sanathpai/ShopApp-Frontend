@@ -163,6 +163,7 @@ const ViewInventories = () => {
               <StyledTableCell>Product Name</StyledTableCell>
               <StyledTableCell>Current Stock</StyledTableCell>
               <StyledTableCell>Unit Type</StyledTableCell>
+              <StyledTableCell>Reminder Limit</StyledTableCell>
               <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
@@ -196,6 +197,7 @@ const ViewInventories = () => {
                     </Select>
                   </FormControl>
                 </TableCell>
+                <TableCell>{inventory.stock_limit}</TableCell>
                 <TableCell>
                   <Button color="secondary" onClick={() => handleDeleteClick(inventory.inventory_id)}>Delete</Button>
                   <Button color="primary" onClick={() => handleReconcileClick(inventory.inventory_id)}>Reconcile</Button>

@@ -27,6 +27,7 @@ const AddSale = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [isProductSelected, setIsProductSelected] = useState(false); // To control visibility
 
   // Fetch products when the component is mounted
   useEffect(() => {
@@ -44,6 +45,7 @@ const AddSale = () => {
 
   const handleProductChange = async (e) => {
     setProductDetails(e.target.value);
+    setIsProductSelected(true); // Enable visibility of other fields
     const [productName, variety] = e.target.value.split(' - ');
     const product = products.find(product => product.product_name === productName && product.variety === variety);
 
@@ -88,6 +90,7 @@ const AddSale = () => {
       setSaleDate(new Date().toISOString().split('T')[0]); // Reset to today's date
       setSelectedUnitId('');
       setProductDetails('');
+      setIsProductSelected(false); // Reset product selection
     } catch (error) {
       console.error('Error adding sale:', error);
       setSnackbarMessage('Error adding sale');
@@ -111,7 +114,7 @@ const AddSale = () => {
           <form onSubmit={handleSubmit}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <FormControl fullWidth required>
-                <InputLabel>Product Name</InputLabel>
+                <InputLabel>Select the product sold</InputLabel>
                 <Select value={productDetails} onChange={handleProductChange}>
                   {products.map((product) => (
                     <MenuItem key={product.product_id} value={`${product.product_name} - ${product.variety}`}>
@@ -120,52 +123,59 @@ const AddSale = () => {
                   ))}
                 </Select>
               </FormControl>
-              <FormControl fullWidth required>
-                <InputLabel>Unit Type (Category)</InputLabel>
-                <Select
-                  value={selectedUnitId}
-                  onChange={(e) => setSelectedUnitId(e.target.value)}
-                >
-                  {unitTypes.map((unit) => (
-                    <MenuItem key={unit.unit_id} value={unit.unit_id}>
-                      {unit.unit_type} {/* Display both unit type and category */}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                label="Retail Price per unit"
-                variant="outlined"
-                fullWidth
-                value={retailPrice}
-                onChange={(e) => setRetailPrice(e.target.value)}
-                required
-                type="number"
-              />
-              <TextField
-                label="Quantity"
-                variant="outlined"
-                fullWidth
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                required
-                type="number"
-              />
-              <TextField
-                label="Sale Date"
-                variant="outlined"
-                fullWidth
-                value={saleDate}
-                onChange={(e) => setSaleDate(e.target.value)}
-                required
-                type="date"
-                InputLabelProps={{
-                  shrink: true,
-                }}
-              />
-              <Button type="submit" variant="contained" color="primary">
-                Add Sale
-              </Button>
+
+              {/* Show other fields only after a product is selected */}
+              {isProductSelected && (
+                <>
+                  <FormControl fullWidth required>
+                    <InputLabel>Unit Type (Category)</InputLabel>
+                    <Select
+                      value={selectedUnitId}
+                      onChange={(e) => setSelectedUnitId(e.target.value)}
+                    >
+                      {unitTypes.map((unit) => (
+                        <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                          {unit.unit_type} {/* Display both unit type and category */}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    label="Retail Price per unit"
+                    variant="outlined"
+                    fullWidth
+                    value={retailPrice}
+                    onChange={(e) => setRetailPrice(e.target.value)}
+                    required
+                    type="number"
+                  />
+                  <TextField
+                    label="Quantity"
+                    variant="outlined"
+                    fullWidth
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    required
+                    type="number"
+                  />
+                  <TextField
+                    label="Sale Date"
+                    variant="outlined"
+                    fullWidth
+                    value={saleDate}
+                    onChange={(e) => setSaleDate(e.target.value)}
+                    required
+                    type="date"
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                  />
+                  <Button type="submit" variant="contained" color="primary">
+                    Add Sale
+                  </Button>
+                </>
+              )}
             </Box>
           </form>
         </CardContent>

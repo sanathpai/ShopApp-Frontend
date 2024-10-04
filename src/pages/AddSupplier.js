@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import axiosInstance from '../AxiosInstance';
-import { Container, TextField, Button, Grid, Card, CardContent, Snackbar, Alert } from '@mui/material';
+import { Container, TextField, Button, Grid, Card, CardContent, Snackbar, Alert, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel } from '@mui/material';
 
 const AddSupplier = () => {
+  const [sourceType, setSourceType] = useState('supplier');
   const [supplierName, setSupplierName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   const [location, setLocation] = useState('');
@@ -13,7 +14,9 @@ const AddSupplier = () => {
     e.preventDefault();
     try {
       await axiosInstance.post('/suppliers', {
-        supplier_name: supplierName,
+        source_type: sourceType, // send the source type
+        supplier_name: sourceType === 'supplier' ? supplierName : '', // send supplier name if source is supplier
+        market_name: sourceType === 'market' ? supplierName : '', // send market name if source is market
         contact_info: contactInfo,
         location,
       });
@@ -30,11 +33,27 @@ const AddSupplier = () => {
     <Container maxWidth="md">
       <Card sx={{ mt: 4 }}>
         <CardContent>
+          <h2>Add Source</h2> {/* Add Source title */}
           <form onSubmit={handleSubmit}>
             <Grid container spacing={2}>
               <Grid item xs={12}>
+                <FormControl component="fieldset">
+                  <FormLabel component="legend">Source Type</FormLabel>
+                  <RadioGroup
+                    row
+                    aria-label="source-type"
+                    name="source-type"
+                    value={sourceType}
+                    onChange={(e) => setSourceType(e.target.value)}
+                  >
+                    <FormControlLabel value="supplier" control={<Radio />} label="Supplier" />
+                    <FormControlLabel value="market" control={<Radio />} label="Market" />
+                  </RadioGroup>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
                 <TextField
-                  label="Supplier Name"
+                  label={sourceType === 'supplier' ? "Supplier Name" : "Market Name"} // Dynamically change label
                   variant="outlined"
                   fullWidth
                   value={supplierName}
@@ -64,7 +83,7 @@ const AddSupplier = () => {
               </Grid>
               <Grid item xs={12}>
                 <Button type="submit" variant="contained" color="primary" fullWidth>
-                  Add Supplier
+                  Add Source
                 </Button>
               </Grid>
             </Grid>
@@ -73,12 +92,12 @@ const AddSupplier = () => {
       </Card>
       <Snackbar open={success} autoHideDuration={6000} onClose={() => setSuccess(false)}>
         <Alert onClose={() => setSuccess(false)} severity="success">
-          Supplier added successfully!
+          Source added successfully!
         </Alert>
       </Snackbar>
       <Snackbar open={error} autoHideDuration={6000} onClose={() => setError(false)}>
         <Alert onClose={() => setError(false)} severity="error">
-          Error adding supplier!
+          Error adding source!
         </Alert>
       </Snackbar>
     </Container>

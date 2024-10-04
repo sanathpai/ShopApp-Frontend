@@ -19,9 +19,10 @@ import MuiAlert from '@mui/material/Alert';
 const AddInventory = () => {
   const [productDetails, setProductDetails] = useState('');
   const [currentStock, setCurrentStock] = useState('');
+  const [stockLimit, setStockLimit] = useState(''); // New state for stock limit
   const [products, setProducts] = useState([]);
-  const [units, setUnits] = useState([]); // List of units
-  const [unitId, setUnitId] = useState(''); // Changed to store the unit_id
+  const [units, setUnits] = useState([]); 
+  const [unitId, setUnitId] = useState(''); 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -48,7 +49,7 @@ const AddInventory = () => {
       try {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
         const fetchedUnits = unitsResponse.data;
-        setUnits(fetchedUnits); // Set units for this product
+        setUnits(fetchedUnits);
       } catch (error) {
         console.error('Error fetching units:', error);
       }
@@ -63,14 +64,16 @@ const AddInventory = () => {
         product_name: productName,
         variety: variety,
         current_stock: currentStock,
-        unit_id: unitId // Use unit_id to send to the backend
+        stock_limit: stockLimit, // Send the stock limit to the backend
+        unit_id: unitId 
       });
       setSnackbarMessage('Inventory added successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
       setProductDetails('');
       setCurrentStock('');
-      setUnitId(''); // Reset unit_id
+      setStockLimit(''); // Reset stock limit
+      setUnitId('');
     } catch (error) {
       console.error('Error adding inventory:', error);
       setSnackbarMessage('Error adding inventory');
@@ -122,7 +125,17 @@ const AddInventory = () => {
                 fullWidth
                 required
               />
-              
+
+              {/* New field to set the stock limit */}
+              <TextField
+                label="Enter the minimum threshold value"
+                type="number"
+                value={stockLimit}
+                onChange={(e) => setStockLimit(e.target.value)}
+                fullWidth
+                required
+              />
+
               <Button type="submit" variant="contained" color="primary">
                 Add Inventory
               </Button>

@@ -25,7 +25,7 @@ const Login = () => {
     event.preventDefault();
     setError('');
     try {
-      const response = await axios.post('https://shoppeappnow.com/api/auth/login', { username, password });
+      const response = await axios.post('http://localhost:5000/api/auth/login', { username, password });
       const { token } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('isLoggedIn', 'true'); // Set login state in local storage
@@ -117,7 +117,7 @@ const Login = () => {
         {/* Footer for Copyright and Version */}
         <Box sx={{ mt: 8, mb: 4 }} align="center">
           <Typography variant="body2" color="text.secondary">
-            &copy; {new Date().getFullYear()} UCSC (Version: 8.2)
+            &copy; {new Date().getFullYear()} UCSC (Version: 8.3)
           </Typography>
         </Box>
       </Container>

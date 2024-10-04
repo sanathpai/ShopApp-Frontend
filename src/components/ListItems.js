@@ -184,7 +184,7 @@ const MainListItems = ({ onItemClick }) => {
         <ListItemIcon>
           <LayersIcon />
         </ListItemIcon>
-        <ListItemText primary="Suppliers" />
+        <ListItemText primary="Sources" />
         {openSuppliers ? <ExpandLess /> : <ExpandMore />}
       </ListItem>
       <Collapse in={openSuppliers} timeout="auto" unmountOnExit>
@@ -193,13 +193,13 @@ const MainListItems = ({ onItemClick }) => {
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
-            <ListItemText primary="Add Supplier" />
+            <ListItemText primary="Add Source" />
           </ListItem>
           <ListItem button component={Link} to="/dashboard/suppliers/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <LayersIcon />
             </ListItemIcon>
-            <ListItemText primary="View Suppliers" />
+            <ListItemText primary="View Sources" />
           </ListItem>
         </List>
       </Collapse>
