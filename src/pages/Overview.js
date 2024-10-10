@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../AxiosInstance';
-import { Box, Typography, Button, useMediaQuery, useTheme, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Button, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -25,7 +25,7 @@ const Overview = () => {
   });
   const [productColors, setProductColors] = useState({});
   const [lowStockProducts, setLowStockProducts] = useState([]);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [openModal, setOpenModal] = useState(false); // State to control the modal visibility
 
   // Function to generate unique colors for each product
   const generateUniqueColors = (products) => {
@@ -94,9 +94,11 @@ const Overview = () => {
           const lowStockItems = inventoryData.filter(
             (inventory) => inventory.current_stock < inventory.stock_limit
           );
+          console.log('Low stock products:', lowStockItems);
+
           if (lowStockItems.length > 0) {
             setLowStockProducts(lowStockItems);
-            setSnackbarOpen(true); // Open snackbar if any product is below stock limit
+            setOpenModal(true); // Open the modal if low stock products exist
           }
         } catch (error) {
           console.error('Error fetching data:', error);
@@ -105,11 +107,6 @@ const Overview = () => {
       fetchData();
     }
   }, [navigate]);
-
-  // Close Snackbar
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-  };
 
   // Chart configuration
   const chartContainerStyle = {
@@ -282,12 +279,27 @@ const Overview = () => {
         </Box>
       </Box>
 
-      {/* Snackbar for Low Stock Alerts */}
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
-        <Alert onClose={handleSnackbarClose} severity="warning" sx={{ width: '100%' }}>
-          The following products have low stock: {lowStockProducts.map(item => item.productName).join(', ')}
-        </Alert>
-      </Snackbar>
+      {/* Low stock modal */}
+      <Dialog open={openModal} onClose={() => setOpenModal(false)}>
+        <DialogTitle>Low Stock Alert</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            The following products have low stock:
+          </Typography>
+          <ul>
+            {lowStockProducts.map(item => (
+              <li key={item.inventory_id}>
+                {item.product_name} ({item.unit_type})
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenModal(false)} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

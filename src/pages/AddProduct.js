@@ -145,7 +145,7 @@ const AddProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Category (Optional)"
+                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
                     variant="outlined"
                     fullWidth
                     value={category}
@@ -154,7 +154,7 @@ const AddProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Variety (Optional)"
+                    label="Variety [Gala, Granny Smith etc] (Optional)"
                     variant="outlined"
                     fullWidth
                     value={variety}

@@ -117,7 +117,7 @@ const Login = () => {
         {/* Footer for Copyright and Version */}
         <Box sx={{ mt: 8, mb: 4 }} align="center">
           <Typography variant="body2" color="text.secondary">
-            &copy; {new Date().getFullYear()} UCSC (Version: 8.3)
+            &copy; {new Date().getFullYear()} UCSC (Version: 8.4)
           </Typography>
         </Box>
       </Container>
