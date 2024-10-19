@@ -106,6 +106,12 @@ const Login = () => {
               Sign in with Google
             </Button>
             <Grid container>
+              <Grid item xs>
+                {/* Forgot Password Link */}
+                <Link href="/forgot-password" variant="body2">
+                  Forgot password?
+                </Link>
+              </Grid>
               <Grid item>
                 <Link href="/register" variant="body2">
                   {"Don't have an account? Sign Up"}

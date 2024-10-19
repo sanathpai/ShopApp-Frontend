@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Register from './pages/Register';
 import Overview from './pages/Overview';
 import AddProduct from './pages/AddProduct';
@@ -47,6 +49,8 @@ const App = () => {
         <CssBaseline />
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/testpage" element={<TestPage />} />
             <Route path="/register" element={<Register />} />
             <Route element={<PrivateRoute />}>

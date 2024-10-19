@@ -93,7 +93,7 @@ const AddSale = () => {
       setIsProductSelected(false); // Reset product selection
     } catch (error) {
       console.error('Error adding sale:', error);
-      setSnackbarMessage('Error adding sale');
+      setSnackbarMessage('Sale Addition failed. Verify if you have enough stocks in inventory');
       setSnackbarSeverity('error');
     } finally {
       setSnackbarOpen(true);
