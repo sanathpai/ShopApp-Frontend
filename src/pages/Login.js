@@ -25,7 +25,7 @@ const Login = () => {
     event.preventDefault();
     setError('');
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', { username, password });
+      const response = await axios.post('https://shoppeappnow.com/api/auth/login', { username, password });
       const { token } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('isLoggedIn', 'true'); // Set login state in local storage
