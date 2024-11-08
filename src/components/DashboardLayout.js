@@ -12,7 +12,7 @@ import Box from '@mui/material/Box';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import { Container,List } from '@mui/material';
+import { Container, List } from '@mui/material';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import { MainListItems, SecondaryListItems } from './ListItems';
@@ -62,14 +62,13 @@ const Drawer = styled(MuiDrawer)(({ theme, open }) => ({
   },
 }));
 
-const DashboardLayout = () => {
+const DashboardLayout = ({ isAdmin }) => {
   const [open, setOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const toggleDrawer = () => {
-    console.log("Toggle drawer clicked, current state:", open);
     setOpen(!open);
   };
 
@@ -101,7 +100,7 @@ const DashboardLayout = () => {
             <MenuIcon />
           </IconButton>
           <Typography component="h1" variant="h6" color="inherit" noWrap sx={{ flexGrow: 1 }}>
-            Dashboard
+            {isAdmin ? 'Admin Dashboard' : 'User Dashboard'}
           </Typography>
           <IconButton color="inherit" onClick={handleMenu}>
             <AccountCircle />
@@ -126,7 +125,8 @@ const DashboardLayout = () => {
         </Toolbar>
         <Divider />
         <List>
-          <MainListItems onItemClick={() => isMobile && setOpen(false)} />
+          {/* Conditionally render different list items for admin and user */}
+          <MainListItems isAdmin={isAdmin} onItemClick={() => isMobile && setOpen(false)} />
         </List>
         <Divider />
         <List>

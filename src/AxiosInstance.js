@@ -7,12 +7,6 @@ const axiosInstance = axios.create({
   },
 });
 
-// const axiosInstance2 = axios.create({
-//   baseURL: 'http://localhost:5000/api/overview/:id',
-//   headers: {
-//     'Content-Type': 'application/json',
-//   },
-// });
 
 
 

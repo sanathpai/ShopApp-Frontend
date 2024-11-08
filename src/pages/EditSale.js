@@ -90,7 +90,7 @@ const EditSale = () => {
               </Grid>
               <Grid item xs={12}>
                 <TextField
-                  label="Retail Price"
+                  label="Total Retail Price"
                   variant="outlined"
                   fullWidth
                   value={retailPrice || ''}

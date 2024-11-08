@@ -165,7 +165,7 @@ const AddPurchase = () => {
                   </FormControl>
 
                   <TextField
-                    label="Order Price per unit"
+                    label="Total Order Price"
                     variant="outlined"
                     fullWidth
                     value={orderPrice}

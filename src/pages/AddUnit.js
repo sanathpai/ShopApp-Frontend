@@ -233,6 +233,12 @@ const AddUnit = () => {
                             label={`Please Enter How many ${selling_unit_type || 'second unit type'} are there in ${buying_unit_type || 'first unit type'}?`}
                             variant="outlined"
                             fullWidth
+                            InputLabelProps={{
+                              style: {
+                                whiteSpace: 'normal',
+                                fontSize: '0.875rem', // Reduce the font size to fit the placeholder
+                              },
+                            }}
                             value={conversionRate}
                             onChange={(e) => setConversionRate(e.target.value)}
                             required
@@ -303,6 +309,12 @@ const AddUnit = () => {
                            label={`Please Enter How many ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selected unit type'} are there in ${newUnitType || 'new unit type'}?`}
                             variant="outlined"
                             fullWidth
+                            InputLabelProps={{
+                              style: {
+                                whiteSpace: 'normal',
+                                fontSize: '0.875rem', // Reduce the font size to fit the placeholder
+                              },
+                            }}
                             value={conversionRate}
                             onChange={(e) => setConversionRate(e.target.value)}
                             required

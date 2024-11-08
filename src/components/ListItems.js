@@ -29,8 +29,12 @@ const MainListItems = ({ onItemClick }) => {
   const [openPurchases, setOpenPurchases] = useState(false);
   const [openSuppliers, setOpenSuppliers] = useState(false);
   const [openSales, setOpenSales] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    const role = localStorage.getItem('role'); // Assuming the role is stored in local storage
+    setIsAdmin(role === 'admin');
+
     const fetchShops = async () => {
       try {
         const response = await axiosInstance.get('/shops');
@@ -74,6 +78,31 @@ const MainListItems = ({ onItemClick }) => {
   const handleSalesClick = () => {
     setOpenSales(!openSales);
   };
+
+  if (isAdmin) {
+    return (
+      <>
+        <ListItem button component={Link} to="/dashboard/admin/users" onClick={() => { console.log("Users link clicked"); onItemClick(); }}>
+          <ListItemIcon>
+            <PeopleIcon />
+          </ListItemIcon>
+          <ListItemText primary="Users" />
+        </ListItem>
+        <ListItem button component={Link} to="/dashboard/admin/users/purchases" onClick={onItemClick}>
+          <ListItemIcon>
+            <ShoppingCartIcon />
+          </ListItemIcon>
+          <ListItemText primary="Purchases" />
+        </ListItem>
+        <ListItem button component={Link} to="/dashboard/admin/users/sales" onClick={onItemClick}>
+          <ListItemIcon>
+            <BarChartIcon />
+          </ListItemIcon>
+          <ListItemText primary="Sales" />
+        </ListItem>
+      </>
+    );
+  }
 
   return (
     <>

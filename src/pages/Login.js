@@ -26,19 +26,28 @@ const Login = () => {
     setError('');
     try {
       const response = await axios.post('https://shoppeappnow.com/api/auth/login', { username, password });
-      const { token } = response.data;
+      const { token, role } = response.data; // Get token and role from response
+
+      // Store token in local storage
       localStorage.setItem('token', token);
-      localStorage.setItem('isLoggedIn', 'true'); // Set login state in local storage
-      navigate('/dashboard');
+      localStorage.setItem('role', role);
+      localStorage.setItem('isLoggedIn', 'true');
+
+      // Check role and route to appropriate dashboard
+      if (role === 'admin') {
+        navigate('/admin/dashboard'); // Admin dashboard route
+      } else {
+        navigate('/dashboard'); // Normal user dashboard route
+      }
     } catch (error) {
       console.error('Login error:', error);
       setError('Login failed. Please check your credentials and try again.');
     }
   };
 
-  const handleGoogleLogin = () => {
-    window.location.href = 'https://shoppeappnow.com/api/auth/google';
-  };
+  // const handleGoogleLogin = () => {
+  //   window.location.href = 'https://shoppeappnow.com/api/auth/google';
+  // };
 
   return (
     <ThemeProvider theme={theme}>
@@ -96,7 +105,7 @@ const Login = () => {
             >
               Sign In
             </Button>
-            <Button
+            {/* <Button
               fullWidth
               variant="contained"
               color="secondary"
@@ -104,10 +113,9 @@ const Login = () => {
               onClick={handleGoogleLogin}
             >
               Sign in with Google
-            </Button>
+            </Button> */}
             <Grid container>
               <Grid item xs>
-                {/* Forgot Password Link */}
                 <Link href="/forgot-password" variant="body2">
                   Forgot password?
                 </Link>
@@ -120,7 +128,6 @@ const Login = () => {
             </Grid>
           </Box>
         </Box>
-        {/* Footer for Copyright and Version */}
         <Box sx={{ mt: 8, mb: 4 }} align="center">
           <Typography variant="body2" color="text.secondary">
             &copy; {new Date().getFullYear()} UCSC (Version: 8.5)

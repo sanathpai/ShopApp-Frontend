@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../AxiosInstance';
-import { Box, Typography, Button, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Button, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, Paper, Grid } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -18,6 +18,7 @@ const Overview = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [isAdmin, setIsAdmin] = useState(false);
   const [overviewData, setOverviewData] = useState([]);
   const [totalQuantities, setTotalQuantities] = useState({
     purchases: [],
@@ -25,7 +26,12 @@ const Overview = () => {
   });
   const [productColors, setProductColors] = useState({});
   const [lowStockProducts, setLowStockProducts] = useState([]);
-  const [openModal, setOpenModal] = useState(false); // State to control the modal visibility
+  const [openModal, setOpenModal] = useState(false);
+
+  // Static values for admin dashboard counts
+  const purchaseCount = 150; // Static value for purchase count
+  const saleCount = 200; // Static value for sale count
+  const userCount = 50; // Static value for user count
 
   // Function to generate unique colors for each product
   const generateUniqueColors = (products) => {
@@ -45,66 +51,69 @@ const Overview = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const role = localStorage.getItem('role'); // Assuming role is stored in localStorage after login
 
     if (!token || !isLoggedIn) {
       navigate('/login');
     } else {
-      const fetchData = async () => {
-        try {
-          const overviewResponse = await axiosInstance.get('/overview');
-          const inventoryResponse = await axiosInstance.get('/inventories'); // Fetch inventories from backend
+      if (role === 'admin') {
+        setIsAdmin(true);
+      } else {
+        const fetchData = async () => {
+          try {
+            const overviewResponse = await axiosInstance.get('/overview');
+            const inventoryResponse = await axiosInstance.get('/inventories');
 
-          const { finalProfits, totalQuantities } = overviewResponse.data;
-          const inventoryData = inventoryResponse.data;
+            const { finalProfits, totalQuantities } = overviewResponse.data;
+            const inventoryData = inventoryResponse.data;
 
-          const productData = finalProfits.profitsForWeek.map((item, index) => ({
-            productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-            productIdentifier: `${item.productName}-${item.variety}`,
-            thisWeekProfit: item.profit,
-            prevWeekProfit: finalProfits.profitsForPrevWeek[index]?.profit || 0,
-          }));
+            const productData = finalProfits.profitsForWeek.map((item, index) => ({
+              productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
+              productIdentifier: `${item.productName}-${item.variety}`,
+              thisWeekProfit: item.profit,
+              prevWeekProfit: finalProfits.profitsForPrevWeek[index]?.profit || 0,
+            }));
 
-          const processedPurchases = totalQuantities.purchases.map((item) => ({
-            productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-            productIdentifier: `${item.productName}-${item.variety}`,
-            totalQuantity: item.totalQuantity,
-          }));
+            const processedPurchases = totalQuantities.purchases.map((item) => ({
+              productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
+              productIdentifier: `${item.productName}-${item.variety}`,
+              totalQuantity: item.totalQuantity,
+            }));
 
-          const processedSales = totalQuantities.sales.map((item) => ({
-            productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-            productIdentifier: `${item.productName}-${item.variety}`,
-            totalQuantity: item.totalQuantity,
-          }));
+            const processedSales = totalQuantities.sales.map((item) => ({
+              productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
+              productIdentifier: `${item.productName}-${item.variety}`,
+              totalQuantity: item.totalQuantity,
+            }));
 
-          setOverviewData(productData);
-          setTotalQuantities({
-            purchases: processedPurchases,
-            sales: processedSales,
-          });
+            setOverviewData(productData);
+            setTotalQuantities({
+              purchases: processedPurchases,
+              sales: processedSales,
+            });
 
-          const allProducts = [
-            ...productData.map((p) => p.productIdentifier),
-            ...processedPurchases.map((p) => p.productIdentifier),
-            ...processedSales.map((p) => p.productIdentifier),
-          ];
-          const colorMap = generateUniqueColors([...new Set(allProducts)]);
-          setProductColors(colorMap);
+            const allProducts = [
+              ...productData.map((p) => p.productIdentifier),
+              ...processedPurchases.map((p) => p.productIdentifier),
+              ...processedSales.map((p) => p.productIdentifier),
+            ];
+            const colorMap = generateUniqueColors([...new Set(allProducts)]);
+            setProductColors(colorMap);
 
-          // Check for low stock products from inventory and set them in state
-          const lowStockItems = inventoryData.filter(
-            (inventory) => inventory.current_stock < inventory.stock_limit
-          );
-          console.log('Low stock products:', lowStockItems);
+            const lowStockItems = inventoryData.filter(
+              (inventory) => inventory.current_stock < inventory.stock_limit
+            );
 
-          if (lowStockItems.length > 0) {
-            setLowStockProducts(lowStockItems);
-            setOpenModal(true); // Open the modal if low stock products exist
+            if (lowStockItems.length > 0) {
+              setLowStockProducts(lowStockItems);
+              setOpenModal(true);
+            }
+          } catch (error) {
+            console.error('Error fetching data:', error);
           }
-        } catch (error) {
-          console.error('Error fetching data:', error);
-        }
-      };
-      fetchData();
+        };
+        fetchData();
+      }
     }
   }, [navigate]);
 
@@ -232,10 +241,39 @@ const Overview = () => {
     };
   };
 
+  if (isAdmin) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: { xs: 2, md: 4 } }}>
+        <Typography variant="h4" gutterBottom>
+          Admin Dashboard
+        </Typography>
+        <Grid container spacing={3} justifyContent="center">
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ padding: 2, textAlign: 'center' }}>
+              <Typography variant="h6">Purchase Count</Typography>
+              <Typography variant="h4">{purchaseCount}</Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ padding: 2, textAlign: 'center' }}>
+              <Typography variant="h6">Sale Count</Typography>
+              <Typography variant="h4">{saleCount}</Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ padding: 2, textAlign: 'center' }}>
+              <Typography variant="h6">User Count</Typography>
+              <Typography variant="h4">{userCount}</Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  }
+
+  // Full dashboard content for regular users
   return (
-    <Box
-      sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: { xs: 2, md: 4 } }}
-    >
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: { xs: 2, md: 4 } }}>
       <Typography variant="h4" gutterBottom>
         Dashboard
       </Typography>
@@ -279,7 +317,6 @@ const Overview = () => {
         </Box>
       </Box>
 
-      {/* Low stock modal */}
       <Dialog open={openModal} onClose={() => setOpenModal(false)}>
         <DialogTitle>Low Stock Alert</DialogTitle>
         <DialogContent>
