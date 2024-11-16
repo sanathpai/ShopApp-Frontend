@@ -103,6 +103,12 @@ const AddSale = () => {
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
   };
+  const getSalePriceLabel = () => {
+    const selectedUnit = unitTypes.find(unit => unit.unit_id === selectedUnitId);
+    return selectedUnit
+      ? `Retail Price (per ${selectedUnit.unit_type})`
+      : 'Retail Price per unit';
+  };
 
   return (
     <Container maxWidth="md">
@@ -142,7 +148,7 @@ const AddSale = () => {
                   </FormControl>
 
                   <TextField
-                    label="Total Retail Price"
+                    label={getSalePriceLabel()}
                     variant="outlined"
                     fullWidth
                     value={retailPrice}

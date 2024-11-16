@@ -33,7 +33,7 @@ const EditPurchase = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [suppliers, setSuppliers] = useState([]);
   const [sources, setSources] = useState([]);
-  const [loading, setLoading] = useState(true); // Add a loading state
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,29 +49,42 @@ const EditPurchase = () => {
 
         const productNameVariety = `${purchase.product_name} - ${purchase.variety}`;
         setProductDetails(productNameVariety);
-        setSelectedSource(purchase.supplier_name ? `Supplier - ${purchase.supplier_name}` : `Market - ${purchase.market_name}`);
+        setSelectedSource(
+          purchase.supplier_name
+            ? `Supplier - ${purchase.supplier_name}`
+            : `Market - ${purchase.market_name}`
+        );
         setOrderPrice(purchase.order_price);
         setQuantity(purchase.quantity);
         setPurchaseDate(purchase.purchase_date.split('T')[0]);
-        setSelectedUnitType(purchase.unit_type);
+        setSelectedUnitType(
+          `${purchase.unit_type} (${purchase.unit_category})`
+        ); // Ensure consistency with how unit type is displayed in unitTypes
 
-        const unitsResponse = await axiosInstance.get(`/units/product/${purchase.product_id}`);
-        setUnitTypes(unitsResponse.data);
+        const unitsResponse = await axiosInstance.get(
+          `/units/product/${purchase.product_id}`
+        );
+        const units = unitsResponse.data.map((unit) => ({
+          id: unit.unit_id,
+          type: `${unit.unit_type} (${unit.unit_category})`
+        }));
+        setUnitTypes(units);
 
-        // Combine suppliers and markets (where supplier_name is null, it's a market)
         const combinedSources = fetchedSuppliers.map((source) => ({
-          name: source.supplier_name ? `Supplier - ${source.supplier_name}` : `Market - ${source.market_name}`,
-          type: source.supplier_name ? 'supplier' : 'market',
+          name: source.supplier_name
+            ? `Supplier - ${source.supplier_name}`
+            : `Market - ${source.market_name}`,
+          type: source.supplier_name ? 'supplier' : 'market'
         }));
 
         setSources(combinedSources);
-        setLoading(false); // Data is loaded
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
         setSnackbarMessage('Error fetching data');
         setSnackbarSeverity('error');
         setSnackbarOpen(true);
-        setLoading(false); // Data is loaded even if there is an error
+        setLoading(false);
       }
     };
 
@@ -83,13 +96,22 @@ const EditPurchase = () => {
     setProductDetails(newProductDetails);
 
     const [productName, variety] = newProductDetails.split(' - ');
-    const product = products.find(product => product.product_name === productName && product.variety === variety);
+    const product = products.find(
+      (product) =>
+        product.product_name === productName && product.variety === variety
+    );
 
     if (product) {
       try {
-        const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
-        setUnitTypes(unitsResponse.data);
-        setSelectedUnitType(''); // Reset selected unit type when product changes
+        const unitsResponse = await axiosInstance.get(
+          `/units/product/${product.product_id}`
+        );
+        const units = unitsResponse.data.map((unit) => ({
+          id: unit.unit_id,
+          type: `${unit.unit_type} (${unit.unit_category})`
+        }));
+        setUnitTypes(units);
+        setSelectedUnitType('');
       } catch (error) {
         console.error('Error fetching units:', error);
       }
@@ -99,23 +121,43 @@ const EditPurchase = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const selectedSourceDetails = sources.find(source => source.name === selectedSource);
+    const selectedSourceDetails = sources.find(
+      (source) => source.name === selectedSource
+    );
     const [productName, variety] = productDetails.split(' - ');
+
+    // Map selectedUnitType to unit_id
+    const selectedUnit = unitTypes.find(
+      (unit) => unit.type === selectedUnitType
+    );
+
+    if (!selectedUnit) {
+      setSnackbarMessage('Please select a valid unit type.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
 
     try {
       await axiosInstance.put(`/purchases/${id}`, {
         product_name: productName,
         variety: variety,
-        supplier_name: selectedSourceDetails && selectedSourceDetails.type === 'supplier' ? selectedSourceDetails.name.replace('Supplier - ', '') : null,
-        market_name: selectedSourceDetails && selectedSourceDetails.type === 'market' ? selectedSourceDetails.name.replace('Market - ', '') : null,
+        supplier_name:
+          selectedSourceDetails?.type === 'supplier'
+            ? selectedSourceDetails.name.replace('Supplier - ', '')
+            : null,
+        market_name:
+          selectedSourceDetails?.type === 'market'
+            ? selectedSourceDetails.name.replace('Market - ', '')
+            : null,
         order_price: orderPrice,
         quantity: quantity,
         purchase_date: purchaseDate,
-        unit_type: selectedUnitType
+        unit_id: selectedUnit.id // Send unit_id instead of unit_type
       });
       setSnackbarMessage('Purchase updated successfully!');
       setSnackbarSeverity('success');
-      navigate('/dashboard/purchases/view'); // Redirect to view purchases page after update
+      navigate('/dashboard/purchases/view');
     } catch (error) {
       console.error('Error updating purchase:', error);
       setSnackbarMessage('Error updating purchase');
@@ -126,6 +168,12 @@ const EditPurchase = () => {
 
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
+  };
+
+  const getOrderPriceLabel = () => {
+    return selectedUnitType
+      ? `Order Price (per ${selectedUnitType})`
+      : 'Order Price per unit';
   };
 
   return (
@@ -141,9 +189,15 @@ const EditPurchase = () => {
                 <>
                   <FormControl fullWidth required>
                     <InputLabel>Product Name</InputLabel>
-                    <Select value={productDetails} onChange={handleProductChange}>
+                    <Select
+                      value={productDetails}
+                      onChange={handleProductChange}
+                    >
                       {products.map((product) => (
-                        <MenuItem key={product.product_id} value={`${product.product_name} - ${product.variety}`}>
+                        <MenuItem
+                          key={product.product_id}
+                          value={`${product.product_name} - ${product.variety}`}
+                        >
                           {`${product.product_name} - ${product.variety}`}
                         </MenuItem>
                       ))}
@@ -151,17 +205,23 @@ const EditPurchase = () => {
                   </FormControl>
                   <FormControl fullWidth required>
                     <InputLabel>Unit Type</InputLabel>
-                    <Select value={selectedUnitType} onChange={(e) => setSelectedUnitType(e.target.value)}>
+                    <Select
+                      value={selectedUnitType}
+                      onChange={(e) => setSelectedUnitType(e.target.value)}
+                    >
                       {unitTypes.map((unit) => (
-                        <MenuItem key={unit.unit_id} value={unit.unit_type}>
-                          {unit.unit_type}
+                        <MenuItem key={unit.id} value={unit.type}>
+                          {unit.type}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                   <FormControl fullWidth required>
                     <InputLabel>Purchased From</InputLabel>
-                    <Select value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
+                    <Select
+                      value={selectedSource}
+                      onChange={(e) => setSelectedSource(e.target.value)}
+                    >
                       {sources.map((source) => (
                         <MenuItem key={source.name} value={source.name}>
                           {source.name}
@@ -170,7 +230,7 @@ const EditPurchase = () => {
                     </Select>
                   </FormControl>
                   <TextField
-                    label="Total Order Price"
+                    label={getOrderPriceLabel()}
                     variant="outlined"
                     fullWidth
                     value={orderPrice}
@@ -196,7 +256,7 @@ const EditPurchase = () => {
                     required
                     type="date"
                     InputLabelProps={{
-                      shrink: true,
+                      shrink: true
                     }}
                   />
                   <Button type="submit" variant="contained" color="primary">
@@ -208,8 +268,16 @@ const EditPurchase = () => {
           </form>
         </CardContent>
       </Card>
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>

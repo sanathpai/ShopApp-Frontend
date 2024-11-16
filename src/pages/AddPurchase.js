@@ -118,6 +118,9 @@ const AddPurchase = () => {
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
   };
+  const getOrderPriceLabel = () => {
+    return selectedUnitType ? `Order Price (per ${selectedUnitType})` : 'Order Price per unit';
+  };
 
   return (
     <Container maxWidth="md">
@@ -165,7 +168,7 @@ const AddPurchase = () => {
                   </FormControl>
 
                   <TextField
-                    label="Total Order Price"
+                    label={getOrderPriceLabel()} 
                     variant="outlined"
                     fullWidth
                     value={orderPrice}
