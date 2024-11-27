@@ -1,7 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../AxiosInstance';
-import { Box, Typography, Button, useMediaQuery, useTheme, Dialog, DialogTitle, DialogContent, DialogActions, Paper, Grid } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Select,
+  MenuItem,
+  Button,
+  Paper,
+} from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -15,328 +27,228 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const Overview = () => {
-  const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [isAdmin, setIsAdmin] = useState(false);
   const [overviewData, setOverviewData] = useState([]);
-  const [totalQuantities, setTotalQuantities] = useState({
-    purchases: [],
-    sales: [],
-  });
+  const [productUnits, setProductUnits] = useState({});
+  const [selectedUnits, setSelectedUnits] = useState({});
+  const [convertedProfits, setConvertedProfits] = useState({});
+  const [purchasesData, setPurchasesData] = useState([]);
+  const [salesData, setSalesData] = useState([]);
   const [productColors, setProductColors] = useState({});
-  const [lowStockProducts, setLowStockProducts] = useState([]);
-  const [openModal, setOpenModal] = useState(false);
-
-  // Static values for admin dashboard counts
-  const purchaseCount = 150; // Static value for purchase count
-  const saleCount = 200; // Static value for sale count
-  const userCount = 50; // Static value for user count
-
-  // Function to generate unique colors for each product
-  const generateUniqueColors = (products) => {
-    const count = products.length;
-    const colors = [];
-    for (let i = 0; i < count; i++) {
-      const color = `hsl(${(i * 360) / count}, 70%, 50%)`;
-      colors.push(color);
-    }
-    const productColorMap = products.reduce((acc, product, index) => {
-      acc[product] = colors[index];
-      return acc;
-    }, {});
-    return productColorMap;
-  };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    const role = localStorage.getItem('role'); // Assuming role is stored in localStorage after login
+    const fetchOverviewData = async () => {
+      try {
+        const response = await axiosInstance.get('/overview');
+        const { finalProfits, totalQuantities } = response.data;
 
-    if (!token || !isLoggedIn) {
-      navigate('/login');
-    } else {
-      if (role === 'admin') {
-        setIsAdmin(true);
-      } else {
-        const fetchData = async () => {
-          try {
-            const overviewResponse = await axiosInstance.get('/overview');
-            const inventoryResponse = await axiosInstance.get('/inventories');
+        const products = finalProfits.profitsForWeek
+          .filter((item) => item.profit > 0)
+          .map((item, index) => ({
+            productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
+            productId: item.productId,
+            profit: item.profit,
+            profitLastWeek: finalProfits.profitsForPrevWeek[index]?.profit || 'N/A',
+            inventoryUnitId: item.unitId,
+          }));
 
-            const { finalProfits, totalQuantities } = overviewResponse.data;
-            const inventoryData = inventoryResponse.data;
+        setOverviewData(products);
 
-            const productData = finalProfits.profitsForWeek.map((item, index) => ({
-              productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-              productIdentifier: `${item.productName}-${item.variety}`,
-              thisWeekProfit: item.profit,
-              prevWeekProfit: finalProfits.profitsForPrevWeek[index]?.profit || 0,
-            }));
+        const processedPurchases = totalQuantities.purchases.map((item) => ({
+          productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
+          productId: item.productId,
+          totalQuantity: item.totalQuantity,
+        }));
 
-            const processedPurchases = totalQuantities.purchases.map((item) => ({
-              productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-              productIdentifier: `${item.productName}-${item.variety}`,
-              totalQuantity: item.totalQuantity,
-            }));
+        const processedSales = totalQuantities.sales.map((item) => ({
+          productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
+          productId: item.productId,
+          totalQuantity: item.totalQuantity,
+        }));
 
-            const processedSales = totalQuantities.sales.map((item) => ({
-              productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-              productIdentifier: `${item.productName}-${item.variety}`,
-              totalQuantity: item.totalQuantity,
-            }));
+        setPurchasesData(processedPurchases);
+        setSalesData(processedSales);
 
-            setOverviewData(productData);
-            setTotalQuantities({
-              purchases: processedPurchases,
-              sales: processedSales,
-            });
+        const allProducts = [
+          ...products,
+          ...processedPurchases,
+          ...processedSales,
+        ];
+        generateUniqueColors(allProducts);
 
-            const allProducts = [
-              ...productData.map((p) => p.productIdentifier),
-              ...processedPurchases.map((p) => p.productIdentifier),
-              ...processedSales.map((p) => p.productIdentifier),
-            ];
-            const colorMap = generateUniqueColors([...new Set(allProducts)]);
-            setProductColors(colorMap);
+        const unitPromises = products.map((product) =>
+          axiosInstance.get(`/units/product/${product.productId}/unitInfo`)
+        );
 
-            const lowStockItems = inventoryData.filter(
-              (inventory) => inventory.current_stock < inventory.stock_limit
-            );
+        const unitResponses = await Promise.all(unitPromises);
+        const units = unitResponses.reduce((acc, res, idx) => {
+          acc[products[idx].productId] = res.data.units;
+          return acc;
+        }, {});
 
-            if (lowStockItems.length > 0) {
-              setLowStockProducts(lowStockItems);
-              setOpenModal(true);
-            }
-          } catch (error) {
-            console.error('Error fetching data:', error);
-          }
-        };
-        fetchData();
+        setProductUnits(units);
+      } catch (error) {
+        console.error('Error fetching overview data:', error);
       }
-    }
-  }, [navigate]);
+    };
 
-  // Chart configuration
-  const chartContainerStyle = {
-    overflowX: 'auto',
-    whiteSpace: 'nowrap',
-    width: '100%',
-    paddingBottom: '1rem',
+    fetchOverviewData();
+  }, []);
+
+  const generateUniqueColors = (products) => {
+    const colorMap = {};
+    products.forEach((product, index) => {
+      if (!colorMap[product.productId]) {
+        colorMap[product.productId] = `hsl(${(index * 360) / products.length}, 70%, 50%)`;
+      }
+    });
+    setProductColors(colorMap);
   };
 
-  const options = {
+  const handleUnitChange = async (productId, selectedUnitId) => {
+    setSelectedUnits((prev) => ({ ...prev, [productId]: selectedUnitId }));
+    const product = overviewData.find((item) => item.productId === productId);
+
+    try {
+      const response = await axiosInstance.get(
+        `/overview/calculate-profit?profitPerInventoryUnit=${product.profit}&inventoryUnitId=${product.inventoryUnitId}&selectedUnitId=${selectedUnitId}`
+      );
+      setConvertedProfits((prev) => ({
+        ...prev,
+        [productId]: response.data.profit,
+      }));
+    } catch (error) {
+      console.error('Error converting profit:', error);
+    }
+  };
+
+  const truncateLabel = (label) => (label.length > 5 ? `${label.substring(0, 5)}...` : label);
+
+  const prepareChartData = (data, label) => ({
+    labels: data.map((item) => truncateLabel(item.productName)),
+    datasets: [
+      {
+        label,
+        data: data.map((item) => convertedProfits[item.productId] || item.profit),
+        backgroundColor: data.map((item) => productColors[item.productId]),
+      },
+    ],
+  });
+
+  const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    scales: {
-      x: {
-        ticks: {
-          autoSkip: false,
-          maxRotation: isMobile ? 90 : 0,
-          minRotation: isMobile ? 90 : 0,
-          padding: isMobile ? 5 : 10,
-          callback: function (value, index, values) {
-            const label = this.getLabelForValue(value);
-            return isMobile
-              ? label.length > 6
-                ? `${label.substring(0, 6)}...`
-                : label
-              : label.length > 6
-              ? `${label.substring(0, 6)}...`
-              : label;
-          },
-        },
-        grid: {
-          display: false,
-        },
-        barPercentage: isMobile ? 1 : 0.8,
-        categoryPercentage: isMobile ? 1 : 0.9,
-      },
-      y: {
-        beginAtZero: true,
-      },
-    },
-    plugins: {
-      legend: {
-        display: !isMobile,
-      },
-      tooltip: {
-        callbacks: {
-          title: (tooltipItems) => {
-            const item = tooltipItems[0];
-            return item.label;
-          },
-        },
-      },
-    },
-    layout: {
-      padding: {
-        left: isMobile ? 10 : 20,
-        right: isMobile ? 10 : 20,
-        top: isMobile ? 20 : 0,
-      },
-    },
+    indexAxis: 'y',
   };
 
-  const prepareProfitChartData = () => {
-    const labels = overviewData.map((item) => item.productName);
-    const profitPerUnitThisWeek = overviewData.map((item) => item.thisWeekProfit);
-    const profitPerUnitLastWeek = overviewData.map((item) => item.prevWeekProfit);
-    const backgroundColors = overviewData.map(
-      (item) => productColors[item.productIdentifier]
-    );
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Profit Per Unit This Week',
-          data: profitPerUnitThisWeek,
-          backgroundColor: backgroundColors,
-        },
-        {
-          label: 'Profit Per Unit Last Week',
-          data: profitPerUnitLastWeek,
-          backgroundColor: backgroundColors.map((color) => color + '80'),
-        },
-      ],
-    };
-  };
-
-  const preparePurchasesChartData = () => {
-    const labels = totalQuantities.purchases.map((item) => item.productName);
-    const quantities = totalQuantities.purchases.map((item) => item.totalQuantity);
-    const backgroundColors = totalQuantities.purchases.map(
-      (item) => productColors[item.productIdentifier]
-    );
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Total Purchases',
-          data: quantities,
-          backgroundColor: backgroundColors,
-        },
-      ],
-    };
-  };
-
-  const prepareSalesChartData = () => {
-    const labels = totalQuantities.sales.map((item) => item.productName);
-    const quantities = totalQuantities.sales.map((item) => item.totalQuantity);
-    const backgroundColors = totalQuantities.sales.map(
-      (item) => productColors[item.productIdentifier]
-    );
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Total Sales',
-          data: quantities,
-          backgroundColor: backgroundColors,
-        },
-      ],
-    };
-  };
-
-  if (isAdmin) {
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: { xs: 2, md: 4 } }}>
-        <Typography variant="h4" gutterBottom>
-          Admin Dashboard
-        </Typography>
-        <Grid container spacing={3} justifyContent="center">
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ padding: 2, textAlign: 'center' }}>
-              <Typography variant="h6">Purchase Count</Typography>
-              <Typography variant="h4">{purchaseCount}</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ padding: 2, textAlign: 'center' }}>
-              <Typography variant="h6">Sale Count</Typography>
-              <Typography variant="h4">{saleCount}</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ padding: 2, textAlign: 'center' }}>
-              <Typography variant="h6">User Count</Typography>
-              <Typography variant="h4">{userCount}</Typography>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Box>
-    );
-  }
-
-  // Full dashboard content for regular users
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: { xs: 2, md: 4 } }}>
-      <Typography variant="h4" gutterBottom>
-        Dashboard
-      </Typography>
-
-      <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2, mb: 4, width: '100%' }}>
-        <Button fullWidth variant="contained" color="primary" onClick={() => navigate('/dashboard/purchases/add')}>
+    <Box sx={{ padding: 2 }}>
+      {/* Buttons */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 3 }}>
+        <Button variant="contained" color="primary">
           Add Purchase
         </Button>
-        <Button fullWidth variant="contained" color="secondary" onClick={() => navigate('/dashboard/sales/add')}>
+        <Button variant="contained" color="secondary">
           Add Sale
         </Button>
-        <Button fullWidth variant="contained" color="info" onClick={() => navigate('/dashboard/inventories/view')}>
-          Reconcile Inventory
+        <Button variant="contained" color="info">
+          Manage Inventory
+        </Button>
+        <Button variant="contained" color="success">
+          Generate Report
         </Button>
       </Box>
 
-      <Box sx={chartContainerStyle}>
-        <Box sx={{ height: { xs: 300, md: 400 }, width: isMobile ? '200%' : '150%', minWidth: isMobile ? '300px' : '600px' }}>
-          <Typography variant="h6" gutterBottom>
-            Profits by Product
-          </Typography>
-          <Bar data={prepareProfitChartData()} options={options} />
-        </Box>
+      {/* Profits Chart */}
+      <Box sx={{ height: 400, marginBottom: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Profits by Product
+        </Typography>
+        <Bar
+          data={{
+            labels: overviewData.map((item) => truncateLabel(item.productName)),
+            datasets: [
+              {
+                label: 'Profit per Inventory Unit (This Week)',
+                data: overviewData.map((item) => convertedProfits[item.productId] || item.profit),
+                backgroundColor: overviewData.map((item) => productColors[item.productId]),
+              },
+              {
+                label: 'Profit per Inventory Unit (Last Week)',
+                data: overviewData.map((item) =>
+                  item.profitLastWeek === 'N/A' ? 0 : item.profitLastWeek
+                ),
+                backgroundColor: overviewData.map((item) => `${productColors[item.productId]}80`),
+              },
+            ],
+          }}
+          options={chartOptions}
+        />
       </Box>
 
-      <Box sx={chartContainerStyle}>
-        <Box sx={{ height: { xs: 300, md: 400 }, width: isMobile ? '200%' : '150%', minWidth: isMobile ? '300px' : '600px' }}>
-          <Typography variant="h6" gutterBottom>
-            Purchases by Product
-          </Typography>
-          <Bar data={preparePurchasesChartData()} options={options} />
-        </Box>
+      {/* Unit Conversion Table */}
+      <Paper sx={{ padding: 3, marginBottom: 4, overflowX: 'auto' }}>
+        <Typography variant="h6" gutterBottom>
+          Unit Conversion Table
+        </Typography>
+        <TableContainer>
+          <Table sx={{ border: '1px solid #ddd', width: '100%' }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Product</TableCell>
+                <TableCell>Profit per Inventory Unit</TableCell>
+                <TableCell>Profit Last Week</TableCell>
+                <TableCell>Select Unit</TableCell>
+                <TableCell>Profit per Selected Unit</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {overviewData.map((product) => (
+                <TableRow key={product.productId}>
+                  <TableCell>{product.productName}</TableCell>
+                  <TableCell>{product.profit.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {product.profitLastWeek === 'N/A' ? 'N/A' : product.profitLastWeek}
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={selectedUnits[product.productId] || ''}
+                      onChange={(e) => handleUnitChange(product.productId, e.target.value)}
+                      fullWidth
+                    >
+                      {productUnits[product.productId]?.map((unit) => (
+                        <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                          {unit.unit_type}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {convertedProfits[product.productId]
+                      ? convertedProfits[product.productId].toFixed(2)
+                      : 'N/A'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* Purchases Chart */}
+      <Box sx={{ height: 400, marginBottom: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Purchases by Product
+        </Typography>
+        <Bar data={prepareChartData(purchasesData, 'Total Purchases')} options={chartOptions} />
       </Box>
 
-      <Box sx={chartContainerStyle}>
-        <Box sx={{ height: { xs: 300, md: 400 }, width: isMobile ? '200%' : '150%', minWidth: isMobile ? '300px' : '600px' }}>
-          <Typography variant="h6" gutterBottom>
-            Sales by Product
-          </Typography>
-          <Bar data={prepareSalesChartData()} options={options} />
-        </Box>
+      {/* Sales Chart */}
+      <Box sx={{ height: 400, marginBottom: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Sales by Product
+        </Typography>
+        <Bar data={prepareChartData(salesData, 'Total Sales')} options={chartOptions} />
       </Box>
-
-      <Dialog open={openModal} onClose={() => setOpenModal(false)}>
-        <DialogTitle>Low Stock Alert</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">
-            The following products have low stock:
-          </Typography>
-          <ul>
-            {lowStockProducts.map(item => (
-              <li key={item.inventory_id}>
-                {item.product_name} ({item.unit_type})
-              </li>
-            ))}
-          </ul>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenModal(false)} color="primary">
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
