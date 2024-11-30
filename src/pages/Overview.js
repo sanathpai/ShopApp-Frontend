@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axiosInstance from '../AxiosInstance';
+import { Link } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -31,6 +32,7 @@ const Overview = () => {
   const [productUnits, setProductUnits] = useState({});
   const [selectedUnits, setSelectedUnits] = useState({});
   const [convertedProfits, setConvertedProfits] = useState({});
+  const [convertedProfitsLastWeek, setConvertedProfitsLastWeek] = useState({});
   const [purchasesData, setPurchasesData] = useState([]);
   const [salesData, setSalesData] = useState([]);
   const [productColors, setProductColors] = useState({});
@@ -110,11 +112,24 @@ const Overview = () => {
 
     try {
       const response = await axiosInstance.get(
-        `/overview/calculate-profit?profitPerInventoryUnit=${product.profit}&inventoryUnitId=${product.inventoryUnitId}&selectedUnitId=${selectedUnitId}`
+        `/overview/calculate-profit`, 
+        {
+          params: {
+            profitPerInventoryUnit: product.profit,
+            profitLastWeek: product.profitLastWeek === 'N/A' ? 0 : product.profitLastWeek,
+            inventoryUnitId: product.inventoryUnitId,
+            selectedUnitId,
+          },
+        }
       );
+
       setConvertedProfits((prev) => ({
         ...prev,
         [productId]: response.data.profit,
+      }));
+      setConvertedProfitsLastWeek((prev) => ({
+        ...prev,
+        [productId]: response.data.profitLastWeek,
       }));
     } catch (error) {
       console.error('Error converting profit:', error);
@@ -123,12 +138,16 @@ const Overview = () => {
 
   const truncateLabel = (label) => (label.length > 5 ? `${label.substring(0, 5)}...` : label);
 
-  const prepareChartData = (data, label) => ({
+  const prepareChartData = (data, label, isLastWeek = false) => ({
     labels: data.map((item) => truncateLabel(item.productName)),
     datasets: [
       {
         label,
-        data: data.map((item) => convertedProfits[item.productId] || item.profit),
+        data: data.map((item) =>
+          isLastWeek
+            ? convertedProfitsLastWeek[item.productId] || item.profitLastWeek
+            : convertedProfits[item.productId] || item.profit
+        ),
         backgroundColor: data.map((item) => productColors[item.productId]),
       },
     ],
@@ -144,18 +163,21 @@ const Overview = () => {
     <Box sx={{ padding: 2 }}>
       {/* Buttons */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 3 }}>
-        <Button variant="contained" color="primary">
-          Add Purchase
-        </Button>
-        <Button variant="contained" color="secondary">
-          Add Sale
-        </Button>
-        <Button variant="contained" color="info">
-          Manage Inventory
-        </Button>
-        <Button variant="contained" color="success">
-          Generate Report
-        </Button>
+        <Link to="/dashboard/purchases/add" style={{ textDecoration: 'none' }}>
+          <Button variant="contained" color="primary">
+            Add Purchase
+          </Button>
+        </Link>
+        <Link to="/dashboard/sales/add" style={{ textDecoration: 'none' }}>
+          <Button variant="contained" color="secondary">
+            Add Sale
+          </Button>
+        </Link>
+        <Link to="/dashboard/inventories/view" style={{ textDecoration: 'none' }}>
+          <Button variant="contained" color="info">
+            Reconcile Inventory
+          </Button>
+        </Link>
       </Box>
 
       {/* Profits Chart */}
@@ -175,7 +197,7 @@ const Overview = () => {
               {
                 label: 'Profit per Inventory Unit (Last Week)',
                 data: overviewData.map((item) =>
-                  item.profitLastWeek === 'N/A' ? 0 : item.profitLastWeek
+                  convertedProfitsLastWeek[item.productId] || item.profitLastWeek
                 ),
                 backgroundColor: overviewData.map((item) => `${productColors[item.productId]}80`),
               },
@@ -199,6 +221,7 @@ const Overview = () => {
                 <TableCell>Profit Last Week</TableCell>
                 <TableCell>Select Unit</TableCell>
                 <TableCell>Profit per Selected Unit</TableCell>
+                <TableCell>Profit Last Week (Selected Unit)</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -225,6 +248,11 @@ const Overview = () => {
                   <TableCell>
                     {convertedProfits[product.productId]
                       ? convertedProfits[product.productId].toFixed(2)
+                      : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    {convertedProfitsLastWeek[product.productId]
+                      ? convertedProfitsLastWeek[product.productId].toFixed(2)
                       : 'N/A'}
                   </TableCell>
                 </TableRow>

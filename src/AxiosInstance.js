@@ -1,13 +1,11 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'httpa://shoppeappnow.com/api',
+  baseURL: 'https://shoppeappnow.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-
 
 
 axiosInstance.interceptors.request.use(config => {

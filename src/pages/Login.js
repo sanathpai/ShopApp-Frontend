@@ -130,7 +130,7 @@ const Login = () => {
         </Box>
         <Box sx={{ mt: 8, mb: 4 }} align="center">
           <Typography variant="body2" color="text.secondary">
-            &copy; {new Date().getFullYear()} UCSC (Version: 8.6.2)
+            &copy; {new Date().getFullYear()} UCSC (Version: 8.6.3)
           </Typography>
         </Box>
       </Container>

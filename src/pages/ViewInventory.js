@@ -43,7 +43,11 @@ const ViewInventories = () => {
     const fetchInventories = async () => {
       try {
         const response = await axiosInstance.get('/inventories');
-        setInventories(response.data);
+        const inventoriesWithOriginalUnits = response.data.map((inventory) => ({
+          ...inventory,
+          originalUnitType: inventory.unit_type, // Store original unit type
+        }));
+        setInventories(inventoriesWithOriginalUnits);
       } catch (error) {
         setErrorMessage('Failed to fetch inventories. Please try again.');
         setOpenErrorSnackbar(true);
@@ -98,7 +102,7 @@ const ViewInventories = () => {
 
     try {
       await axiosInstance.delete(`/inventories/${inventoryId}`);
-      setInventories(inventories.filter(inv => inv.inventory_id !== inventoryId));
+      setInventories(inventories.filter((inv) => inv.inventory_id !== inventoryId));
       setOpenSuccessSnackbar(true);
       setErrorMessage('Inventory deleted successfully.');
     } catch (error) {
@@ -120,21 +124,25 @@ const ViewInventories = () => {
       return;
     }
 
-    const inventory = inventories.find(inv => inv.inventory_id === inventoryId);
+    const inventory = inventories.find((inv) => inv.inventory_id === inventoryId);
     if (!inventory) return;
 
     try {
       const response = await axiosInstance.post('/inventories/convert', {
         quantity: inventory.current_stock,
         fromUnitId: inventory.unit_id,
-        toUnitId: toUnitId
+        toUnitId: toUnitId,
       });
 
       const { convertedQuantity } = response.data;
 
-      setInventories(inventories.map(inv =>
-        inv.inventory_id === inventoryId ? { ...inv, current_stock: convertedQuantity, unit_id: toUnitId } : inv
-      ));
+      setInventories(
+        inventories.map((inv) =>
+          inv.inventory_id === inventoryId
+            ? { ...inv, current_stock: convertedQuantity, unit_id: toUnitId }
+            : inv
+        )
+      );
 
       setOpenSuccessSnackbar(true);
       setErrorMessage('Conversion completed successfully.');
@@ -164,46 +172,60 @@ const ViewInventories = () => {
               <StyledTableCell>Current Stock</StyledTableCell>
               <StyledTableCell>Unit Type</StyledTableCell>
               <StyledTableCell>Reminder Limit</StyledTableCell>
+              <StyledTableCell>Limit Unit Type</StyledTableCell>
               <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {inventories.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((inventory) => (
-              <TableRow key={inventory.inventory_id}>
-                <TableCell>{inventory.shop_name}</TableCell>
-                <TableCell>{`${inventory.product_name} - ${inventory.variety}`}</TableCell>
-                <TableCell>
-                  {typeof inventory.current_stock === 'number' ? 
-                    inventory.current_stock.toFixed(2) : 
-                    parseFloat(inventory.current_stock).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <FormControl fullWidth>
-                    <Select
-                      value={inventory.unit_id}
-                      onChange={(e) => handleUnitConversion(inventory.inventory_id, e.target.value)}
-                    >
-                      {inventory.available_units && inventory.available_units.length > 0 ? (
-                        inventory.available_units.map(unit => (
-                          <MenuItem key={unit.unit_id} value={unit.unit_id}>
-                            {`${unit.unit_type} (${unit.unit_category})`}
+            {inventories
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((inventory) => (
+                <TableRow key={inventory.inventory_id}>
+                  <TableCell>{inventory.shop_name}</TableCell>
+                  <TableCell>{`${inventory.product_name} - ${inventory.variety}`}</TableCell>
+                  <TableCell>
+                    {typeof inventory.current_stock === 'number'
+                      ? inventory.current_stock.toFixed(2)
+                      : parseFloat(inventory.current_stock).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <Select
+                        value={inventory.unit_id}
+                        onChange={(e) => handleUnitConversion(inventory.inventory_id, e.target.value)}
+                      >
+                        {inventory.available_units && inventory.available_units.length > 0 ? (
+                          inventory.available_units.map((unit) => (
+                            <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                              {`${unit.unit_type} (${unit.unit_category})`}
+                            </MenuItem>
+                          ))
+                        ) : (
+                          <MenuItem value="" disabled>
+                            No units available
                           </MenuItem>
-                        ))
-                      ) : (
-                        <MenuItem value="" disabled>
-                          No units available
-                        </MenuItem>
-                      )}
-                    </Select>
-                  </FormControl>
-                </TableCell>
-                <TableCell>{inventory.stock_limit}</TableCell>
-                <TableCell>
-                  <Button color="secondary" onClick={() => handleDeleteClick(inventory.inventory_id)}>Delete</Button>
-                  <Button color="primary" onClick={() => handleReconcileClick(inventory.inventory_id)}>Reconcile</Button>
-                </TableCell>
-              </TableRow>
-            ))}
+                        )}
+                      </Select>
+                    </FormControl>
+                  </TableCell>
+                  <TableCell>{inventory.stock_limit}</TableCell>
+                  <TableCell>{inventory.originalUnitType}</TableCell>
+                  <TableCell>
+                    <Button
+                      color="secondary"
+                      onClick={() => handleDeleteClick(inventory.inventory_id)}
+                    >
+                      Delete
+                    </Button>
+                    <Button
+                      color="primary"
+                      onClick={() => handleReconcileClick(inventory.inventory_id)}
+                    >
+                      Reconcile
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </TableContainer>
@@ -221,7 +243,12 @@ const ViewInventories = () => {
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
       >
-        <MuiAlert elevation={6} variant="filled" onClose={handleCloseSnackbar} severity={openSuccessSnackbar ? 'success' : 'error'}>
+        <MuiAlert
+          elevation={6}
+          variant="filled"
+          onClose={handleCloseSnackbar}
+          severity={openSuccessSnackbar ? 'success' : 'error'}
+        >
           {errorMessage}
         </MuiAlert>
       </Snackbar>
