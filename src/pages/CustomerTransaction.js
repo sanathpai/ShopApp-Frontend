@@ -133,7 +133,7 @@ const CustomerTransaction = () => {
             </Grid>
             <Grid item xs={2}>
               <TextField
-                label="Price"
+                label=" Retail Price per unit"
                 variant="outlined"
                 type="number"
                 fullWidth
