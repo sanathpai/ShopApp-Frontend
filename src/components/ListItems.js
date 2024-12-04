@@ -256,6 +256,13 @@ const MainListItems = ({ onItemClick }) => {
           </ListItem>
         </List>
       </Collapse>
+
+      <ListItem button component={Link} to="/dashboard/customertransaction" onClick={onItemClick}>
+  <ListItemIcon>
+    <ShoppingCartIcon />
+  </ListItemIcon>
+  <ListItemText primary="Customer Transaction" />
+</ListItem>
     </>
   );
 };

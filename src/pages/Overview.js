@@ -33,15 +33,13 @@ const Overview = () => {
   const [selectedUnits, setSelectedUnits] = useState({});
   const [convertedProfits, setConvertedProfits] = useState({});
   const [convertedProfitsLastWeek, setConvertedProfitsLastWeek] = useState({});
-  const [purchasesData, setPurchasesData] = useState([]);
-  const [salesData, setSalesData] = useState([]);
   const [productColors, setProductColors] = useState({});
 
   useEffect(() => {
     const fetchOverviewData = async () => {
       try {
         const response = await axiosInstance.get('/overview');
-        const { finalProfits, totalQuantities } = response.data;
+        const { finalProfits } = response.data;
 
         const products = finalProfits.profitsForWeek
           .filter((item) => item.profit > 0)
@@ -55,26 +53,7 @@ const Overview = () => {
 
         setOverviewData(products);
 
-        const processedPurchases = totalQuantities.purchases.map((item) => ({
-          productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-          productId: item.productId,
-          totalQuantity: item.totalQuantity,
-        }));
-
-        const processedSales = totalQuantities.sales.map((item) => ({
-          productName: `${item.productName}-${item.variety || 'Unknown Variety'}`,
-          productId: item.productId,
-          totalQuantity: item.totalQuantity,
-        }));
-
-        setPurchasesData(processedPurchases);
-        setSalesData(processedSales);
-
-        const allProducts = [
-          ...products,
-          ...processedPurchases,
-          ...processedSales,
-        ];
+        const allProducts = products;
         generateUniqueColors(allProducts);
 
         const unitPromises = products.map((product) =>
@@ -88,6 +67,13 @@ const Overview = () => {
         }, {});
 
         setProductUnits(units);
+
+        // Set default units for dropdown
+        const defaultUnits = products.reduce((acc, product) => {
+          acc[product.productId] = product.inventoryUnitId;
+          return acc;
+        }, {});
+        setSelectedUnits(defaultUnits);
       } catch (error) {
         console.error('Error fetching overview data:', error);
       }
@@ -112,7 +98,7 @@ const Overview = () => {
 
     try {
       const response = await axiosInstance.get(
-        `/overview/calculate-profit`, 
+        `/overview/calculate-profit`,
         {
           params: {
             profitPerInventoryUnit: product.profit,
@@ -138,21 +124,6 @@ const Overview = () => {
 
   const truncateLabel = (label) => (label.length > 5 ? `${label.substring(0, 5)}...` : label);
 
-  const prepareChartData = (data, label, isLastWeek = false) => ({
-    labels: data.map((item) => truncateLabel(item.productName)),
-    datasets: [
-      {
-        label,
-        data: data.map((item) =>
-          isLastWeek
-            ? convertedProfitsLastWeek[item.productId] || item.profitLastWeek
-            : convertedProfits[item.productId] || item.profit
-        ),
-        backgroundColor: data.map((item) => productColors[item.productId]),
-      },
-    ],
-  });
-
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -176,6 +147,11 @@ const Overview = () => {
         <Link to="/dashboard/inventories/view" style={{ textDecoration: 'none' }}>
           <Button variant="contained" color="info">
             Reconcile Inventory
+          </Button>
+        </Link>
+        <Link to="/dashboard/customertransaction" style={{ textDecoration: 'none' }}>
+          <Button variant="contained" color="secondary">
+            Transaction
           </Button>
         </Link>
       </Box>
@@ -234,7 +210,7 @@ const Overview = () => {
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={selectedUnits[product.productId] || ''}
+                      value={selectedUnits[product.productId] || product.inventoryUnitId}
                       onChange={(e) => handleUnitChange(product.productId, e.target.value)}
                       fullWidth
                     >
@@ -261,22 +237,6 @@ const Overview = () => {
           </Table>
         </TableContainer>
       </Paper>
-
-      {/* Purchases Chart */}
-      <Box sx={{ height: 400, marginBottom: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          Purchases by Product
-        </Typography>
-        <Bar data={prepareChartData(purchasesData, 'Total Purchases')} options={chartOptions} />
-      </Box>
-
-      {/* Sales Chart */}
-      <Box sx={{ height: 400, marginBottom: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          Sales by Product
-        </Typography>
-        <Bar data={prepareChartData(salesData, 'Total Sales')} options={chartOptions} />
-      </Box>
     </Box>
   );
 };

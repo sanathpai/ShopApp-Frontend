@@ -37,6 +37,7 @@ import EditSale from './pages/EditSale';
 import ViewSales from './pages/ViewSales';
 import ReconcileInventory from './pages/ReconcileInventory';
 import TestPage from './pages/testPage';
+import CustomerTransaction from './pages/CustomerTransaction'
 import PrivateRoute from './components/PrivateRoute';
 
 // Admin-specific pages
@@ -93,6 +94,7 @@ const App = () => {
               <Route path="sales/edit/:id" element={<EditSale />} />
               <Route path="sales/view" element={<ViewSales />} />
               <Route path="inventories/reconcile/:id" element={<ReconcileInventory />} />
+              <Route path="customertransaction" element={<CustomerTransaction />} />
 
               {/* Admin-specific routes */}
               {isAdmin && (
