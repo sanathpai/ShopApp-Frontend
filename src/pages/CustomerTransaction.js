@@ -7,17 +7,16 @@ import {
   Button,
   Typography,
   Grid,
-  IconButton,
-  Paper,
   FormControl,
   InputLabel,
+  Paper,
 } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import ClearIcon from '@mui/icons-material/Clear';
 import axiosInstance from '../AxiosInstance';
 
 const CustomerTransaction = () => {
-  const [products, setProducts] = useState([]); // All products fetched from API
+  const [products, setProducts] = useState([]);
   const [items, setItems] = useState([
     { product: '', unitTypes: [], unitType: '', price: '', quantity: '', total: 0 },
   ]);
@@ -33,7 +32,6 @@ const CustomerTransaction = () => {
         console.error('Error fetching products:', error);
       }
     };
-
     fetchProducts();
   }, []);
 
@@ -42,16 +40,14 @@ const CustomerTransaction = () => {
     const selectedProduct = products.find((product) => product.product_id === productId);
 
     updatedItems[index].product = productId;
-    updatedItems[index].price = selectedProduct?.price || ''; // Assume product API includes price
-    updatedItems[index].unitType = ''; // Reset unit type when changing product
-    updatedItems[index].unitTypes = []; // Reset unit types when changing product
+    updatedItems[index].price = selectedProduct?.price || '';
+    updatedItems[index].unitType = '';
+    updatedItems[index].unitTypes = [];
 
-    // Fetch unit types for the selected product
     if (selectedProduct) {
       try {
-        const unitsResponse = await axiosInstance.get(`/units/product/${productId}`); // API to fetch unit types
+        const unitsResponse = await axiosInstance.get(`/units/product/${productId}`);
         const units = unitsResponse.data;
-
         updatedItems[index].unitTypes = units.map((unit) => ({
           id: unit.unit_id,
           type: `${unit.unit_type} (${unit.unit_category})`,
@@ -60,7 +56,6 @@ const CustomerTransaction = () => {
         console.error('Error fetching units:', error);
       }
     }
-
     setItems(updatedItems);
   };
 
@@ -73,7 +68,6 @@ const CustomerTransaction = () => {
       const quantity = parseFloat(updatedItems[index].quantity || 0);
       updatedItems[index].total = price * quantity;
     }
-
     setItems(updatedItems);
 
     const totalSum = updatedItems.reduce((sum, item) => sum + item.total, 0);
@@ -90,38 +84,59 @@ const CustomerTransaction = () => {
   };
 
   return (
-    <Container maxWidth="md">
-      <Typography variant="h4" gutterBottom>
+    <Container maxWidth="lg" sx={{ paddingY: 4 }}>
+      <Typography variant="h4" gutterBottom align="center">
         Customer Transaction
       </Typography>
-      <Paper sx={{ padding: 4 }}>
+      <Paper elevation={3} sx={{ padding: 4, borderRadius: 2 }}>
         {items.map((item, index) => (
-          <Grid container spacing={2} key={index} sx={{ marginBottom: 2 }}>
-            <Grid item xs={4}>
+          <Grid
+            container
+            spacing={2}
+            key={index}
+            sx={{
+              marginBottom: 2,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              justifyContent: { xs: 'center', sm: 'space-between' },
+            }}
+          >
+            <Grid item xs={12} sm={5} md={3}>
               <FormControl fullWidth>
                 <InputLabel>Product</InputLabel>
                 <Select
                   value={item.product}
                   onChange={(e) => handleProductChange(index, e.target.value)}
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                      },
+                    },
+                  }}
                 >
                   {products.map((product) => (
-                    <MenuItem
-                      key={product.product_id}
-                      value={product.product_id}
-                    >
+                    <MenuItem key={product.product_id} value={product.product_id}>
                       {`${product.product_name} - ${product.variety}`}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={12} sm={4} md={2}>
               <FormControl fullWidth>
                 <InputLabel>Unit</InputLabel>
                 <Select
                   value={item.unitType}
                   onChange={(e) => handleInputChange(index, 'unitType', e.target.value)}
                   disabled={!item.unitTypes.length}
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300,
+                      },
+                    },
+                  }}
                 >
                   {item.unitTypes.map((unit) => (
                     <MenuItem key={unit.id} value={unit.type}>
@@ -131,9 +146,9 @@ const CustomerTransaction = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={2}>
+            <Grid item xs={6} sm={4} md={2}>
               <TextField
-                label=" Retail Price per unit"
+                label="Price per unit"
                 variant="outlined"
                 type="number"
                 fullWidth
@@ -141,7 +156,7 @@ const CustomerTransaction = () => {
                 onChange={(e) => handleInputChange(index, 'price', e.target.value)}
               />
             </Grid>
-            <Grid item xs={2}>
+            <Grid item xs={6} sm={4} md={2}>
               <TextField
                 label="Quantity"
                 variant="outlined"
@@ -151,8 +166,15 @@ const CustomerTransaction = () => {
                 onChange={(e) => handleInputChange(index, 'quantity', e.target.value)}
               />
             </Grid>
-            <Grid item xs={1}>
-              <Typography variant="h6" sx={{ marginTop: 1 }}>
+            <Grid item xs={6} sm={2} md={1}>
+              <Typography
+                variant="body1"
+                align="center"
+                sx={{
+                  fontWeight: 'bold',
+                  marginTop: { xs: 1, sm: 0 },
+                }}
+              >
                 {item.total.toFixed(2)}
               </Typography>
             </Grid>
@@ -166,6 +188,7 @@ const CustomerTransaction = () => {
               startIcon={<AddCircleIcon />}
               onClick={handleAddItem}
               fullWidth
+              sx={{ paddingY: 1.5 }}
             >
               Add Item
             </Button>
@@ -177,12 +200,20 @@ const CustomerTransaction = () => {
               startIcon={<ClearIcon />}
               onClick={handleReset}
               fullWidth
+              sx={{ paddingY: 1.5 }}
             >
               Reset
             </Button>
           </Grid>
         </Grid>
-        <Typography variant="h5" align="right" sx={{ marginTop: 4 }}>
+        <Typography
+          variant="h5"
+          align="right"
+          sx={{
+            marginTop: 4,
+            fontWeight: 'bold',
+          }}
+        >
           Grand Total (ZMW): {grandTotal.toFixed(2)}
         </Typography>
       </Paper>
