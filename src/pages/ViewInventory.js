@@ -28,6 +28,12 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 'bold',
 }));
 
+const StyledTablePagination = styled(TablePagination)(({ theme }) => ({
+  '& .MuiSvgIcon-root': {
+    fontSize: '1.8rem', // Increase the size of the navigation arrows
+  },
+}));
+
 const ViewInventories = () => {
   const [inventories, setInventories] = useState([]);
   const [page, setPage] = useState(0);
@@ -39,13 +45,12 @@ const ViewInventories = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch inventories
     const fetchInventories = async () => {
       try {
         const response = await axiosInstance.get('/inventories');
         const inventoriesWithOriginalUnits = response.data.map((inventory) => ({
           ...inventory,
-          originalUnitType: inventory.unit_type, // Store original unit type
+          originalUnitType: inventory.unit_type,
         }));
         setInventories(inventoriesWithOriginalUnits);
       } catch (error) {
@@ -55,17 +60,15 @@ const ViewInventories = () => {
       }
     };
 
-    // Initial fetch
     if (isOnline) {
       fetchInventories();
     }
 
-    // Event listeners for network status
     const handleOnline = () => {
       setIsOnline(true);
       setErrorMessage('Network is back online. Updating data...');
       setOpenSuccessSnackbar(true);
-      fetchInventories(); // Refetch data when back online
+      fetchInventories();
     };
 
     const handleOffline = () => {
@@ -77,7 +80,6 @@ const ViewInventories = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Cleanup listeners on unmount
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -116,7 +118,6 @@ const ViewInventories = () => {
     navigate(`/dashboard/inventories/reconcile/${inventoryId}`);
   };
 
-  // Handle unit conversion
   const handleUnitConversion = async (inventoryId, toUnitId) => {
     if (!isOnline) {
       setErrorMessage('Cannot convert units while offline.');
@@ -229,7 +230,7 @@ const ViewInventories = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      <TablePagination
+      <StyledTablePagination
         rowsPerPageOptions={[5, 10, 25]}
         component="div"
         count={inventories.length}

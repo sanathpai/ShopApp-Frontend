@@ -13,7 +13,12 @@ import {
   Alert,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  Modal,
+  Grid,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
 } from '@mui/material';
 
 const AddPurchase = () => {
@@ -29,7 +34,14 @@ const AddPurchase = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [suppliers, setSuppliers] = useState([]);
-  const [isProductSelected, setIsProductSelected] = useState(false); // To control the visibility
+  const [isProductSelected, setIsProductSelected] = useState(false);
+
+  // Modal State for Adding a New Source
+  const [modalOpen, setModalOpen] = useState(false);
+  const [sourceType, setSourceType] = useState('supplier');
+  const [supplierName, setSupplierName] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
+  const [location, setLocation] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -37,7 +49,7 @@ const AddPurchase = () => {
         const productsResponse = await axiosInstance.get('/products');
         setProducts(productsResponse.data);
 
-        const suppliersResponse = await axiosInstance.get('/suppliers'); // Fetches both markets and suppliers
+        const suppliersResponse = await axiosInstance.get('/suppliers');
         setSuppliers(suppliersResponse.data);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -49,7 +61,7 @@ const AddPurchase = () => {
 
   const handleProductChange = async (e) => {
     setProductDetails(e.target.value);
-    setIsProductSelected(true); // Enable visibility of other fields
+    setIsProductSelected(true);
     const [productName, variety] = e.target.value.split(' - ');
     const product = products.find(product => product.product_name === productName && product.variety === variety);
 
@@ -57,8 +69,6 @@ const AddPurchase = () => {
       try {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
         const units = unitsResponse.data;
-
-        // Set the unitTypes with both type and category together
         setUnitTypes(units.map(unit => ({
           id: unit.unit_id,
           type: `${unit.unit_type} (${unit.unit_category})`,
@@ -72,26 +82,23 @@ const AddPurchase = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const selectedSourceDetails = suppliers.find(
       (supplier) => supplier.market_name === selectedSource || supplier.name === selectedSource
     );
     const [productName, variety] = productDetails.split(' - ');
-    
-    // Fetch the unit id corresponding to the selected unit type
     const selectedUnit = unitTypes.find(unit => unit.type === selectedUnitType);
 
     try {
       await axiosInstance.post('/purchases', {
         product_name: productName,
-        variety: variety,
-        supplier_name: selectedSourceDetails && selectedSourceDetails.name ? selectedSourceDetails.name : null,
-        market_name: selectedSourceDetails && selectedSourceDetails.market_name ? selectedSourceDetails.market_name : null,
+        variety,
+        supplier_name: selectedSourceDetails?.name || null,
+        market_name: selectedSourceDetails?.market_name || null,
         order_price: orderPrice,
-        quantity: quantity,
+        quantity,
         purchase_date: purchaseDate,
-        unit_id: selectedUnit.id, // Send the unit id, not the type
-        unit_category: selectedUnit.unitCategory // Include the unit category in your payload
+        unit_id: selectedUnit.id,
+        unit_category: selectedUnit.unitCategory,
       });
       setSnackbarMessage('Purchase added successfully!');
       setSnackbarSeverity('success');
@@ -101,14 +108,37 @@ const AddPurchase = () => {
       setPurchaseDate(new Date().toISOString().split('T')[0]);
       setSelectedUnitType('');
       setProductDetails('');
-      setIsProductSelected(false); // Reset product selection
+      setIsProductSelected(false);
     } catch (error) {
       console.error('Error adding purchase:', error);
-      if (error.response && error.response.data.error === 'Inventory not found. Please add the item to inventory first.') {
-        setSnackbarMessage('Inventory not found. Please add the item to inventory first.');
-      } else {
-        setSnackbarMessage('Error adding purchase');
-      }
+      setSnackbarMessage('Error adding purchase');
+      setSnackbarSeverity('error');
+    } finally {
+      setSnackbarOpen(true);
+    }
+  };
+
+  const handleAddSource = async () => {
+    try {
+      await axiosInstance.post('/suppliers', {
+        source_type: sourceType,
+        supplier_name: sourceType === 'supplier' ? supplierName : '',
+        market_name: sourceType === 'market' ? supplierName : '',
+        contact_info: contactInfo,
+        location,
+      });
+      setSnackbarMessage('Source added successfully!');
+      setSnackbarSeverity('success');
+      setSupplierName('');
+      setContactInfo('');
+      setLocation('');
+      setModalOpen(false);
+
+      // Refresh suppliers list
+      const suppliersResponse = await axiosInstance.get('/suppliers');
+      setSuppliers(suppliersResponse.data);
+    } catch (error) {
+      setSnackbarMessage('Error adding source');
       setSnackbarSeverity('error');
     } finally {
       setSnackbarOpen(true);
@@ -117,9 +147,6 @@ const AddPurchase = () => {
 
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
-  };
-  const getOrderPriceLabel = () => {
-    return selectedUnitType ? `Order Price (per ${selectedUnitType})` : 'Order Price per unit';
   };
 
   return (
@@ -142,7 +169,6 @@ const AddPurchase = () => {
                 </Select>
               </FormControl>
 
-              {/* Show other fields only after a product is selected */}
               {isProductSelected && (
                 <>
                   <FormControl fullWidth required>
@@ -150,7 +176,7 @@ const AddPurchase = () => {
                     <Select value={selectedUnitType} onChange={(e) => setSelectedUnitType(e.target.value)}>
                       {unitTypes.map((unit) => (
                         <MenuItem key={unit.id} value={unit.type}>
-                          {unit.type} {/* Display both unit type and category together */}
+                          {unit.type}
                         </MenuItem>
                       ))}
                     </Select>
@@ -166,9 +192,12 @@ const AddPurchase = () => {
                       ))}
                     </Select>
                   </FormControl>
+                  <Button onClick={() => setModalOpen(true)} color="secondary">
+                    Add Source
+                  </Button>
 
                   <TextField
-                    label={getOrderPriceLabel()} 
+                    label={`Order Price (per ${selectedUnitType || 'unit'})`}
                     variant="outlined"
                     fullWidth
                     value={orderPrice}
@@ -206,6 +235,68 @@ const AddPurchase = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Add Source Modal */}
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Add Source
+          </Typography>
+          <FormControl component="fieldset" sx={{ mb: 2 }}>
+            <RadioGroup
+              row
+              value={sourceType}
+              onChange={(e) => setSourceType(e.target.value)}
+            >
+              <FormControlLabel value="supplier" control={<Radio />} label="Supplier" />
+              <FormControlLabel value="market" control={<Radio />} label="Market" />
+            </RadioGroup>
+          </FormControl>
+          <TextField
+            label={sourceType === 'supplier' ? 'Supplier Name' : 'Market Name'}
+            variant="outlined"
+            fullWidth
+            value={supplierName}
+            onChange={(e) => setSupplierName(e.target.value)}
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Phone Number"
+            variant="outlined"
+            fullWidth
+            value={contactInfo}
+            onChange={(e) => setContactInfo(e.target.value)}
+            required
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Location"
+            variant="outlined"
+            fullWidth
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            required
+            sx={{ mb: 2 }}
+          />
+          <Button onClick={handleAddSource} variant="contained" color="primary" fullWidth>
+            Add Source
+          </Button>
+        </Box>
+      </Modal>
+
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
         <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
           {snackbarMessage}

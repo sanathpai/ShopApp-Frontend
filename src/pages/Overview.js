@@ -14,6 +14,7 @@ import {
   MenuItem,
   Button,
   Paper,
+  Modal,
 } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -34,6 +35,8 @@ const Overview = () => {
   const [convertedProfits, setConvertedProfits] = useState({});
   const [convertedProfitsLastWeek, setConvertedProfitsLastWeek] = useState({});
   const [productColors, setProductColors] = useState({});
+  const [productsBelowThreshold, setProductsBelowThreshold] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchOverviewData = async () => {
@@ -79,7 +82,18 @@ const Overview = () => {
       }
     };
 
+    const fetchProductsBelowThreshold = async () => {
+      try {
+        const response = await axiosInstance.get('/overview/below-threshold');
+        setProductsBelowThreshold(response.data.productsBelowThreshold);
+        setModalOpen(response.data.productsBelowThreshold.length > 0);
+      } catch (error) {
+        console.error('Error fetching products below threshold:', error);
+      }
+    };
+
     fetchOverviewData();
+    fetchProductsBelowThreshold();
   }, []);
 
   const generateUniqueColors = (products) => {
@@ -130,8 +144,44 @@ const Overview = () => {
     indexAxis: 'y',
   };
 
+  const handleCloseModal = () => setModalOpen(false);
+
   return (
     <Box sx={{ padding: 2 }}>
+      {/* Modal for Products Below Threshold */}
+      <Modal open={modalOpen} onClose={handleCloseModal}>
+        <Box sx={{ padding: 4, background: 'white', margin: 'auto', marginTop: '10%', width: '50%', borderRadius: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Products Below Threshold
+          </Typography>
+          {productsBelowThreshold.length > 0 ? (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product Name</TableCell>
+                    <TableCell>Variety</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {productsBelowThreshold.map((product) => (
+                    <TableRow key={product.productId}>
+                      <TableCell>{product.productName}</TableCell>
+                      <TableCell>{product.variety}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Typography>No products below the threshold.</Typography>
+          )}
+          <Button variant="contained" onClick={handleCloseModal} sx={{ marginTop: 2 }}>
+            Close
+          </Button>
+        </Box>
+      </Modal>
+
       {/* Buttons */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 3 }}>
         <Link to="/dashboard/purchases/add" style={{ textDecoration: 'none' }}>
