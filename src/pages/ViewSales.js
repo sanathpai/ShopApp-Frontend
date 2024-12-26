@@ -32,6 +32,8 @@ const ViewSales = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,10 +48,10 @@ const ViewSales = () => {
     fetchSales();
   }, []);
 
-  const handleDelete = async (saleId) => {
+  const handleDelete = async () => {
     try {
-      await axiosInstance.delete(`/sales/${saleId}`);
-      setSales(sales.filter((sale) => sale.sale_id !== saleId));
+      await axiosInstance.delete(`/sales/${saleToDelete.sale_id}`);
+      setSales(sales.filter((sale) => sale.sale_id !== saleToDelete.sale_id));
       setSnackbarMessage('Sale deleted successfully!');
       setSnackbarSeverity('success');
     } catch (error) {
@@ -58,7 +60,18 @@ const ViewSales = () => {
       setSnackbarSeverity('error');
     } finally {
       setSnackbarOpen(true);
+      setDeleteConfirmOpen(false);
     }
+  };
+
+  const confirmDelete = (sale) => {
+    setSaleToDelete(sale);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setSaleToDelete(null);
   };
 
   const handleInfoOpen = (sale) => {
@@ -81,10 +94,9 @@ const ViewSales = () => {
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
-    setCurrentPage(0); // Reset to the first page
+    setCurrentPage(0);
   };
 
-  // Paginated sales data
   const paginatedSales = sales.slice(currentPage * rowsPerPage, currentPage * rowsPerPage + rowsPerPage);
 
   return (
@@ -114,7 +126,7 @@ const ViewSales = () => {
                   <IconButton color="primary" onClick={() => handleInfoOpen(sale)}>
                     <InfoIcon />
                   </IconButton>
-                  <IconButton color="error" onClick={() => handleDelete(sale.sale_id)}>
+                  <IconButton color="error" onClick={() => confirmDelete(sale)}>
                     <DeleteIcon />
                   </IconButton>
                 </Box>
@@ -124,13 +136,12 @@ const ViewSales = () => {
         ))}
       </Grid>
 
-      {/* Pagination */}
       <Box
         sx={{
           display: 'flex',
           justifyContent: 'center',
           marginTop: 4,
-          overflowX: 'auto', // Prevent horizontal scrolling
+          overflowX: 'auto',
           width: '100%',
         }}
       >
@@ -144,35 +155,30 @@ const ViewSales = () => {
           rowsPerPageOptions={[6, 12, 18]}
           sx={{
             '& .MuiTablePagination-toolbar': {
-              flexWrap: 'wrap', // Allow wrapping for small screens
-              justifyContent: 'center', // Center pagination controls
+              flexWrap: 'wrap',
+              justifyContent: 'center',
             },
             '& .MuiTablePagination-selectLabel': {
-              display: { xs: 'none', sm: 'inline-block' }, // Hide label on mobile
+              display: { xs: 'none', sm: 'inline-block' },
             },
             '& .MuiInputBase-root': {
-              fontSize: '0.875rem', // Scale down font size for mobile
+              fontSize: '0.875rem',
             },
             '& .MuiTablePagination-actions': {
-              marginTop: { xs: 1, sm: 0 }, // Add spacing for actions on mobile
+              marginTop: { xs: 1, sm: 0 },
             },
           }}
         />
       </Box>
 
-      {/* Dialog for Sale Details */}
       <Dialog open={dialogOpen} onClose={handleDialogClose}>
         <DialogTitle>Sale Details</DialogTitle>
         <DialogContent>
           {selectedSale && (
             <>
-              <DialogContentText>
-                Product Name: {selectedSale.product_name}
-              </DialogContentText>
+              <DialogContentText>Product Name: {selectedSale.product_name}</DialogContentText>
               <DialogContentText>Variety: {selectedSale.variety}</DialogContentText>
-              <DialogContentText>
-                Retail Price: ${selectedSale.retail_price}
-              </DialogContentText>
+              <DialogContentText>Retail Price: ${selectedSale.retail_price}</DialogContentText>
               <DialogContentText>Quantity: {selectedSale.quantity}</DialogContentText>
               <DialogContentText>
                 Sale Date: {new Date(selectedSale.sale_date).toLocaleDateString()}
@@ -187,7 +193,21 @@ const ViewSales = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar for Notifications */}
+      <Dialog open={deleteConfirmOpen} onClose={handleCancelDelete}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this sale? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="secondary">
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}

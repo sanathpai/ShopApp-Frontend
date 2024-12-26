@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../AxiosInstance';
-import { Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, TablePagination, IconButton, Snackbar, Alert } from '@mui/material';
+import {
+  Container,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Typography,
+  TablePagination,
+  IconButton,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Button,
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,6 +38,8 @@ const ViewPurchases = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [purchaseToDelete, setPurchaseToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,18 +67,25 @@ const ViewPurchases = () => {
     navigate(`/dashboard/purchases/edit/${id}`);
   };
 
-  const handleDelete = async (id) => {
+  const confirmDelete = (purchase) => {
+    setPurchaseToDelete(purchase);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDelete = async () => {
     try {
-      await axiosInstance.delete(`/purchases/${id}`);
-      setPurchases(purchases.filter((purchase) => purchase.purchase_id !== id));
+      await axiosInstance.delete(`/purchases/${purchaseToDelete.purchase_id}`);
+      setPurchases(purchases.filter((purchase) => purchase.purchase_id !== purchaseToDelete.purchase_id));
       setSnackbarMessage('Purchase deleted successfully!');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
+      setDeleteConfirmOpen(false);
     } catch (error) {
       console.error('Error deleting purchase:', error);
       setSnackbarMessage('Error deleting purchase');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -92,7 +120,7 @@ const ViewPurchases = () => {
                   <IconButton color="primary" onClick={() => handleEdit(purchase.purchase_id)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton color="error" onClick={() => handleDelete(purchase.purchase_id)}>
+                  <IconButton color="error" onClick={() => confirmDelete(purchase)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -115,6 +143,24 @@ const ViewPurchases = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* Confirmation Dialog for Deletion */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this purchase? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="secondary">
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

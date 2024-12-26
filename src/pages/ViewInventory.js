@@ -16,8 +16,12 @@ import {
   MenuItem,
   Select,
   FormControl,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Alert, // Use Alert instead of MuiAlert
 } from '@mui/material';
-import MuiAlert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,6 +46,8 @@ const ViewInventories = () => {
   const [openErrorSnackbar, setOpenErrorSnackbar] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // For delete confirmation dialog
+  const [inventoryToDelete, setInventoryToDelete] = useState(null); // Inventory to delete
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -95,22 +101,31 @@ const ViewInventories = () => {
     setPage(0);
   };
 
-  const handleDeleteClick = async (inventoryId) => {
+  const confirmDelete = (inventory) => {
+    setInventoryToDelete(inventory);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDelete = async () => {
     if (!isOnline) {
       setErrorMessage('Cannot delete inventory while offline.');
       setOpenErrorSnackbar(true);
+      setDeleteConfirmOpen(false);
       return;
     }
 
     try {
-      await axiosInstance.delete(`/inventories/${inventoryId}`);
-      setInventories(inventories.filter((inv) => inv.inventory_id !== inventoryId));
+      await axiosInstance.delete(`/inventories/${inventoryToDelete.inventory_id}`);
+      setInventories(inventories.filter((inv) => inv.inventory_id !== inventoryToDelete.inventory_id));
       setOpenSuccessSnackbar(true);
       setErrorMessage('Inventory deleted successfully.');
     } catch (error) {
       setErrorMessage('Failed to delete inventory. Please try again.');
       setOpenErrorSnackbar(true);
       console.error('Error deleting inventory:', error);
+    } finally {
+      setDeleteConfirmOpen(false);
+      setInventoryToDelete(null);
     }
   };
 
@@ -212,16 +227,10 @@ const ViewInventories = () => {
                   <TableCell>{inventory.stock_limit}</TableCell>
                   <TableCell>{inventory.originalUnitType}</TableCell>
                   <TableCell>
-                    <Button
-                      color="secondary"
-                      onClick={() => handleDeleteClick(inventory.inventory_id)}
-                    >
+                    <Button color="secondary" onClick={() => confirmDelete(inventory)}>
                       Delete
                     </Button>
-                    <Button
-                      color="primary"
-                      onClick={() => handleReconcileClick(inventory.inventory_id)}
-                    >
+                    <Button color="primary" onClick={() => handleReconcileClick(inventory.inventory_id)}>
                       Reconcile
                     </Button>
                   </TableCell>
@@ -244,15 +253,33 @@ const ViewInventories = () => {
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
       >
-        <MuiAlert
+        <Alert
           elevation={6}
           variant="filled"
           onClose={handleCloseSnackbar}
           severity={openSuccessSnackbar ? 'success' : 'error'}
         >
           {errorMessage}
-        </MuiAlert>
+        </Alert>
       </Snackbar>
+
+      {/* Confirmation Dialog for Deletion */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this inventory item? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="secondary">
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

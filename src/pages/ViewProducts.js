@@ -18,7 +18,7 @@ import {
   DialogContentText,
   DialogTitle,
   Pagination,
-  PaginationItem
+  PaginationItem,
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import axiosInstance from '../AxiosInstance';
@@ -33,6 +33,8 @@ const ViewProducts = () => {
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(6);
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -93,7 +95,7 @@ const ViewProducts = () => {
     navigate(`/dashboard/products/edit/${product.product_id}`);
   };
 
-  const handleDelete = async (productId) => {
+  const handleDelete = async () => {
     if (!isOnline) {
       setSnackbarMessage('You are offline. Cannot delete the product.');
       setSnackbarSeverity('error');
@@ -101,8 +103,8 @@ const ViewProducts = () => {
       return;
     }
     try {
-      await axiosInstance.delete(`/products/${productId}`);
-      setProducts(products.filter((product) => product.product_id !== productId));
+      await axiosInstance.delete(`/products/${productToDelete.product_id}`);
+      setProducts(products.filter((product) => product.product_id !== productToDelete.product_id));
       setSnackbarMessage('Product deleted successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
@@ -111,6 +113,9 @@ const ViewProducts = () => {
       setSnackbarMessage('Error deleting product: ' + (error.response ? error.response.data.error : error.message));
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
+    } finally {
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     }
   };
 
@@ -135,6 +140,16 @@ const ViewProducts = () => {
     setPage(value);
   };
 
+  const handleDeleteDialogOpen = (product) => {
+    setProductToDelete(product);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setProductToDelete(null);
+  };
+
   return (
     <Container sx={{ marginTop: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
@@ -154,7 +169,11 @@ const ViewProducts = () => {
                 <Button variant="contained" color="primary" onClick={() => handleEdit(product)}>
                   Edit
                 </Button>
-                <Button variant="contained" color="secondary" onClick={() => handleDelete(product.product_id)}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => handleDeleteDialogOpen(product)}
+                >
                   Delete
                 </Button>
                 <IconButton color="info" onClick={() => handleDetailsOpen(product)}>
@@ -208,6 +227,23 @@ const ViewProducts = () => {
         <DialogActions>
           <Button onClick={handleDetailsClose} color="primary">
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteDialogClose}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the product{' '}
+            <strong>{productToDelete?.product_name}</strong>?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteDialogClose} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="secondary">
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

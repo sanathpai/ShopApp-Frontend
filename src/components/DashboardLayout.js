@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet } from 'react-router-dom'; // Correctly imported Outlet
 import { styled, useTheme } from '@mui/material/styles';
 import MuiDrawer from '@mui/material/Drawer';
 import MuiAppBar from '@mui/material/AppBar';
@@ -12,11 +12,10 @@ import Box from '@mui/material/Box';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import { Container, List } from '@mui/material';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
+import { Container, List, Menu, MenuItem } from '@mui/material';
 import { MainListItems, SecondaryListItems } from './ListItems';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { jwtDecode } from 'jwt-decode'; // Correctly imported jwtDecode
 
 const drawerWidth = 240;
 
@@ -34,14 +33,13 @@ const AppBar = styled(MuiAppBar)(({ theme, open }) => ({
       duration: theme.transitions.duration.enteringScreen,
     }),
   }),
-  width: '100%',
+  width: '100%', // Removed the duplicate width
 }));
 
 const Drawer = styled(MuiDrawer)(({ theme, open }) => ({
   '& .MuiDrawer-paper': {
     position: 'relative',
     whiteSpace: 'nowrap',
-    width: drawerWidth,
     transition: theme.transitions.create('width', {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.enteringScreen,
@@ -58,13 +56,14 @@ const Drawer = styled(MuiDrawer)(({ theme, open }) => ({
         width: theme.spacing(9),
       },
     }),
-    width: open ? drawerWidth : 0,
+    width: open ? drawerWidth : 0, // Removed duplicate key
   },
 }));
 
 const DashboardLayout = ({ isAdmin }) => {
   const [open, setOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [username, setUsername] = useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -85,6 +84,18 @@ const DashboardLayout = ({ isAdmin }) => {
     window.location.href = '/login';
   };
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token); // Decode the JWT token
+        setUsername(decoded.username); // Extract and set the username
+      } catch (error) {
+        console.error('Invalid token:', error);
+      }
+    }
+  }, []);
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -100,18 +111,21 @@ const DashboardLayout = ({ isAdmin }) => {
             <MenuIcon />
           </IconButton>
           <Typography component="h1" variant="h6" color="inherit" noWrap sx={{ flexGrow: 1 }}>
-            {isAdmin ? 'Admin Dashboard' : 'User Dashboard'}
+            {isAdmin ? 'Admin Dashboard' : `${username} dashboard`}
           </Typography>
-          <IconButton color="inherit" onClick={handleMenu}>
-            <AccountCircle />
-          </IconButton>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-            <MenuItem onClick={handleLogout}>Logout</MenuItem>
-          </Menu>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            
+            <IconButton color="inherit" onClick={handleMenu}>
+              <AccountCircle />
+            </IconButton>
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
+              <MenuItem onClick={handleLogout}>Logout</MenuItem>
+            </Menu>
+          </Box>
         </Toolbar>
       </AppBar>
       <Drawer
-        variant={isMobile ? "temporary" : "permanent"}
+        variant={isMobile ? 'temporary' : 'permanent'}
         open={open}
         onClose={toggleDrawer}
         ModalProps={{
@@ -145,7 +159,7 @@ const DashboardLayout = ({ isAdmin }) => {
       >
         <Toolbar />
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-          <Outlet />
+          <Outlet /> {/* Ensure Outlet is used correctly */}
         </Container>
       </Box>
     </Box>
