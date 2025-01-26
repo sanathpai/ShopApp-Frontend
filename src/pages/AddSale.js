@@ -106,8 +106,8 @@ const AddSale = () => {
   const getSalePriceLabel = () => {
     const selectedUnit = unitTypes.find(unit => unit.unit_id === selectedUnitId);
     return selectedUnit
-      ? `Retail Price (per ${selectedUnit.unit_type})`
-      : 'Retail Price per unit';
+      ? `Retail Price (per ${selectedUnit.unit_type})(K)`
+      : 'Retail Price per unit (K)';
   };
 
   return (

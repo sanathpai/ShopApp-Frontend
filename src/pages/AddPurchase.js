@@ -197,7 +197,7 @@ const AddPurchase = () => {
                   </Button>
 
                   <TextField
-                    label={`Order Price (per ${selectedUnitType || 'unit'})`}
+                    label={`Order Price (per ${selectedUnitType || 'unit'}) (K)`}
                     variant="outlined"
                     fullWidth
                     value={orderPrice}

@@ -135,6 +135,18 @@ const CustomerTransaction = () => {
     setGrandTotal(0);
   };
 
+  const handleDeleteItem = (index) => {
+    if (items.length > 1) {
+      const updatedItems = items.filter((_, i) => i !== index);
+      setItems(updatedItems);
+
+      const totalSum = updatedItems.reduce((sum, item) => sum + item.total, 0);
+      setGrandTotal(totalSum);
+    } else {
+      alert("Cannot delete the last remaining item. Use Reset instead");
+    }
+  };
+
   const handleSubmit = () => {
     setOpenModal(true);
   };
@@ -202,7 +214,7 @@ const CustomerTransaction = () => {
             </Grid>
             <Grid item xs={6} sm={2}>
               <TextField
-                label="Price per unit"
+                label="Price per unit (K)"
                 type="number"
                 fullWidth
                 value={item.price}
@@ -232,6 +244,15 @@ const CustomerTransaction = () => {
               <Typography variant="body1" align="center" sx={{ fontWeight: 'bold' }}>
                 {item.total.toFixed(2)}
               </Typography>
+            </Grid>
+            <Grid item xs={12} sm={1}>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => handleDeleteItem(index)}
+              >
+                Delete
+              </Button>
             </Grid>
           </Grid>
         ))}
