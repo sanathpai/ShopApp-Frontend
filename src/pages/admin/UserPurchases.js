@@ -39,6 +39,8 @@ const UserPurchases = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>User Name</TableCell>
+              <TableCell>Shop Name</TableCell>
               <TableCell>Product Name</TableCell>
               <TableCell>Variety</TableCell>
               <TableCell>Quantity</TableCell>
@@ -49,6 +51,8 @@ const UserPurchases = () => {
           <TableBody>
             {purchases.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((purchase) => (
               <TableRow key={purchase.purchase_id}>
+                <TableCell>{purchase.username}</TableCell>
+                <TableCell>{purchase.shop_name}</TableCell>
                 <TableCell>{purchase.product_name}</TableCell>
                 <TableCell>{purchase.variety}</TableCell>
                 <TableCell>{purchase.quantity}</TableCell>

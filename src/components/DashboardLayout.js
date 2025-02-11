@@ -143,9 +143,7 @@ const DashboardLayout = ({ isAdmin }) => {
           <MainListItems isAdmin={isAdmin} onItemClick={() => isMobile && setOpen(false)} />
         </List>
         <Divider />
-        <List>
-          <SecondaryListItems />
-        </List>
+        {/* secondary list to be added here if needed */}
       </Drawer>
       <Box
         component="main"

@@ -38,6 +38,8 @@ const UserSales = () => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>User Name</TableCell>
+              <TableCell>Shop Name</TableCell>
               <TableCell>Product Name</TableCell>
               <TableCell>Variety</TableCell>
               <TableCell>Quantity</TableCell>
@@ -49,6 +51,8 @@ const UserSales = () => {
           <TableBody>
             {sales.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((sale) => (
               <TableRow key={sale.sale_id}>
+                <TableCell>{sale.username}</TableCell>
+                <TableCell>{sale.shop_name}</TableCell>
                 <TableCell>{sale.product_name}</TableCell>
                 <TableCell>{sale.variety}</TableCell>
                 <TableCell>{sale.quantity}</TableCell>

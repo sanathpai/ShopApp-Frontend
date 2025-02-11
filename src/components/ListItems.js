@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
+import { Button } from '@mui/material';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ListItemText from '@mui/material/ListItemText';
 import Collapse from '@mui/material/Collapse';
 import List from '@mui/material/List';
@@ -12,6 +14,7 @@ import LayersIcon from '@mui/icons-material/Layers';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import CategoryIcon from '@mui/icons-material/Category';
+
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import axiosInstance from '../AxiosInstance';
@@ -50,6 +53,42 @@ const MainListItems = ({ onItemClick }) => {
   const handleProductsClick = () => {
     setOpenProducts(!openProducts);
   };
+
+  const handleExport = async () => {
+    try {
+        const response = await axiosInstance.get('/admin/export-full-database', {
+            responseType: 'blob', // Ensure proper file download
+        });
+
+        // Create a blob link for download
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'exported_data.xlsx');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        console.error('Error exporting data:', error);
+    }
+};
+
+const handleReportExport = async (filter) => {
+  try {
+      const response = await axiosInstance.get(`/admin/export-report?filter=${filter}`, { responseType: 'blob' });
+
+      // Create a blob link for download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${filter}_report.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  } catch (error) {
+      console.error('Error exporting report:', error);
+  }
+};
 
   const handleUnitsClick = () => {
     setOpenUnits(!openUnits);
@@ -100,6 +139,35 @@ const MainListItems = ({ onItemClick }) => {
           </ListItemIcon>
           <ListItemText primary="Sales" />
         </ListItem>
+        <ListItem button onClick={handleExport}>
+    <ListItemIcon>
+        <FileDownloadIcon />
+    </ListItemIcon>
+    <ListItemText primary="Export Data" />
+</ListItem>
+<div>
+    <ListSubheader inset>Saved reports</ListSubheader>
+    <ListItem button onClick={() => handleReportExport("current_month")}>
+          <ListItemIcon>
+            <AssignmentIcon />
+          </ListItemIcon>
+          <ListItemText primary="Current Month" />
+        </ListItem>
+
+        <ListItem button onClick={() => handleReportExport("last_quarter")}>
+          <ListItemIcon>
+            <AssignmentIcon />
+          </ListItemIcon>
+          <ListItemText primary="Last Quarter" />
+        </ListItem>
+
+        <ListItem button onClick={() => handleReportExport("year_end")}>
+          <ListItemIcon>
+            <AssignmentIcon />
+          </ListItemIcon>
+          <ListItemText primary="Year-End Sale" />
+        </ListItem>
+  </div>
       </>
     );
   }
@@ -267,28 +335,6 @@ const MainListItems = ({ onItemClick }) => {
   );
 };
 
-const SecondaryListItems = () => (
-  <div>
-    <ListSubheader inset>Saved reports</ListSubheader>
-    <ListItem button>
-      <ListItemIcon>
-        <AssignmentIcon />
-      </ListItemIcon>
-      <ListItemText primary="Current month" />
-    </ListItem>
-    <ListItem button>
-      <ListItemIcon>
-        <AssignmentIcon />
-      </ListItemIcon>
-      <ListItemText primary="Last quarter" />
-    </ListItem>
-    <ListItem button>
-      <ListItemIcon>
-        <AssignmentIcon />
-      </ListItemIcon>
-      <ListItemText primary="Year-end sale" />
-    </ListItem>
-  </div>
-);
 
-export { MainListItems, SecondaryListItems };
+
+export { MainListItems};
