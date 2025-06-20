@@ -7,6 +7,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Register from './pages/Register';
 import Overview from './pages/Overview';
+import ViewInsights from './pages/ViewInsights';
 import AddProduct from './pages/AddProduct';
 import ViewProducts from './pages/ViewProducts';
 import EditProduct from './pages/EditProduct';
@@ -66,6 +67,7 @@ const App = () => {
           <Route element={<PrivateRoute />}>
             <Route path="/dashboard" element={<DashboardLayout isAdmin={isAdmin} />}>
               <Route index element={<Overview />} />
+              <Route path="insights" element={<ViewInsights />} />
               <Route path="products/add" element={<AddProduct />} />
               <Route path="products/view" element={<ViewProducts />} />
               <Route path="products/edit/:id" element={<EditProduct />} />

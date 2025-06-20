@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
-import { Button } from '@mui/material';
+import { Button, Badge } from '@mui/material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import ListItemText from '@mui/material/ListItemText';
 import Collapse from '@mui/material/Collapse';
@@ -14,13 +14,16 @@ import LayersIcon from '@mui/icons-material/Layers';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import CategoryIcon from '@mui/icons-material/Category';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import axiosInstance from '../AxiosInstance';
+import insightsService from '../services/insightsService';
 import { useShopContext } from '../context/ShopContext';
 import { Link } from 'react-router-dom';
 import { ListSubheader } from '@mui/material';
+import { jwtDecode } from 'jwt-decode';
 
 const MainListItems = ({ onItemClick }) => {
   const { shopCount, setShopCount } = useShopContext();
@@ -33,10 +36,25 @@ const MainListItems = ({ onItemClick }) => {
   const [openSuppliers, setOpenSuppliers] = useState(false);
   const [openSales, setOpenSales] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [insightNotificationCount, setInsightNotificationCount] = useState(0);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    const role = localStorage.getItem('role'); // Assuming the role is stored in local storage
+    const role = localStorage.getItem('role');
     setIsAdmin(role === 'admin');
+
+    // Extract userId from JWT token
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        const extractedUserId = decoded.id || decoded.userId || decoded.user_id;
+        setUserId(extractedUserId);
+        console.log('ListItems - Extracted userId:', extractedUserId); // Debug log
+      } catch (error) {
+        console.error('Invalid token in ListItems:', error);
+      }
+    }
 
     const fetchShops = async () => {
       try {
@@ -49,6 +67,30 @@ const MainListItems = ({ onItemClick }) => {
 
     fetchShops();
   }, [setShopCount]);
+
+  // Separate useEffect for insights checking when userId is available
+  useEffect(() => {
+    if (!userId || isAdmin) return;
+
+    const checkInsightNotifications = async () => {
+      try {
+        console.log('Checking notifications for userId:', userId); // Debug log
+        const count = await insightsService.getNotificationCount(userId);
+        setInsightNotificationCount(count);
+      } catch (error) {
+        console.error('Error checking insight notifications:', error);
+      }
+    };
+
+    checkInsightNotifications();
+
+    // Set up periodic check for new insights
+    const unsubscribe = insightsService.subscribeToUpdates(userId, ({ hasNewInsights }) => {
+      setInsightNotificationCount(hasNewInsights ? 1 : 0);
+    });
+
+    return unsubscribe;
+  }, [userId, isAdmin]);
 
   const handleProductsClick = () => {
     setOpenProducts(!openProducts);
@@ -179,6 +221,15 @@ const handleReportExport = async (filter) => {
           <BarChartIcon />
         </ListItemIcon>
         <ListItemText primary="Overview" />
+      </ListItem>
+
+      <ListItem button component={Link} to="/dashboard/insights" onClick={onItemClick}>
+        <ListItemIcon>
+          <Badge badgeContent={insightNotificationCount} color="error">
+            <TrendingUpIcon />
+          </Badge>
+        </ListItemIcon>
+        <ListItemText primary="Business Insights" />
       </ListItem>
 
       <ListItem button onClick={handleProductsClick}>
