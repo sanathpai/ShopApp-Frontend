@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
       return 'http://localhost:8000/api';
     }
     // If accessing from mobile/other device on same network, use local IP
-    return 'http://192.168.0.101:8000/api';
+    return 'https://shoppeappnow.com/api';
   }
   
 
