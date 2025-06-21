@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axiosInstance from '../AxiosInstance';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -25,7 +25,7 @@ const Login = () => {
     event.preventDefault();
     setError('');
     try {
-      const response = await axios.post('https://shoppeappnow.com/api/auth/login', { username, password });
+      const response = await axiosInstance.post('/api/auth/login', { username, password });
       const { token, role } = response.data; // Get token and role from response
 
       // Store token in local storage

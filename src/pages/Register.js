@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '../AxiosInstance';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
@@ -61,7 +61,7 @@ const Register = () => {
       return;
     }
     try {
-      await axios.post('https://shoppeappnow.com/api/auth/register', formData);
+      await axiosInstance.post('/api/auth/register', formData);
       setOpen(true);
       setTimeout(() => {
         navigate('/login');
