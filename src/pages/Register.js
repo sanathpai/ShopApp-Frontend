@@ -18,7 +18,6 @@ import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { API_BASE_URL } from '../config';
 
 const theme = createTheme();
 
@@ -62,7 +61,7 @@ const Register = () => {
       return;
     }
     try {
-      await axios.post(`${API_BASE_URL}/auth/register`, formData);
+      await axios.post('https://shoppeappnow.com/api/auth/register', formData);
       setOpen(true);
       setTimeout(() => {
         navigate('/login');
