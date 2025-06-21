@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Box, Button, TextField, Typography, Container } from '@mui/material';
+import { API_BASE_URL } from '../config';
 
 const ResetPassword = () => {
   const { token } = useParams();  // Get the token from the URL
@@ -21,7 +22,7 @@ const ResetPassword = () => {
     }
 
     try {
-        const response = await axios.post(`http://localhost:5000/api/auth/reset-password/${token}`, {
+        const response = await axios.post(`${API_BASE_URL}/auth/reset-password/${token}`, {
             password,
           });
 

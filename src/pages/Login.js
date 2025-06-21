@@ -12,6 +12,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { API_BASE_URL } from '../config';
 
 const theme = createTheme();
 
@@ -25,7 +26,7 @@ const Login = () => {
     event.preventDefault();
     setError('');
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', { username, password });
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { username, password });
       const { token, role } = response.data; // Get token and role from response
 
       // Store token in local storage
