@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://frontend.shoppeappnow.com/api',
+  baseURL: 'http://13.247.97.152:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
