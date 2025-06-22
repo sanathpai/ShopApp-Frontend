@@ -27,7 +27,10 @@ const Login = () => {
     try {
       const response = await axios.post('http://13.247.97.152:8000/api/auth/login', { username, password });
       const { token, role } = response.data; // Get token and role from response
-
+      console.log(response);
+      console.log(response.data);
+      console.log(response.data.token);
+      console.log(response.data.role);
       // Store token in local storage
       localStorage.setItem('token', token);
       localStorage.setItem('role', role);
