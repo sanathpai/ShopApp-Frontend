@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://13.247.97.152:8000',
+  baseURL: 'https://shoppeappnow.com',
   headers: {
     'Content-Type': 'application/json',
   },
