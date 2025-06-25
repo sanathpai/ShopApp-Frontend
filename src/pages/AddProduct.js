@@ -36,7 +36,7 @@ const AddProduct = () => {
           setSnackbarOpen(true);
         });
     } else {
-      setSearchResults([]);
+      setSearchResults([]); // Clear results when input is too short or offline
     }
   }, [productName, isOnline]); // Include isOnline in dependency array
 

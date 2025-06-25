@@ -1,0 +1,25 @@
+# HTTP server - redirect to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name frontend.shoppeappnow.com;
+    return 301 https://$server_name$request_uri;
+}
+
+# HTTPS server - serve React app
+server {
+    listen 443 ssl;
+    server_name frontend.shoppeappnow.com;
+    
+    ssl_certificate /etc/letsencrypt/live/frontend.shoppeappnow.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/frontend.shoppeappnow.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    
+    root /var/www/html;
+    index index.html index.htm;
+    
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+} 

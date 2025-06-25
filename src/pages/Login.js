@@ -12,8 +12,37 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { jwtDecode } from 'jwt-decode';
 
 const theme = createTheme();
+
+// Helper function to decode and display JWT token contents
+const decodeAndLogToken = (token) => {
+  try {
+    const decoded = jwtDecode(token);
+    console.log('=== JWT Token Contents ===');
+    console.log('Full decoded token:', decoded);
+    console.log('Available fields:', Object.keys(decoded));
+    console.log('Username:', decoded.username);
+    console.log('User ID:', decoded.id || decoded.userId || decoded.user_id);
+    console.log('Role:', decoded.role);
+    console.log('Issued at:', decoded.iat ? new Date(decoded.iat * 1000) : 'Not available');
+    console.log('Expires at:', decoded.exp ? new Date(decoded.exp * 1000) : 'Not available');
+    console.log('=== END JWT Contents ===');
+    
+    // Check if password is in token (it shouldn't be!)
+    if (decoded.password) {
+      console.error('⚠️ WARNING: Password found in JWT token! This is a security issue!');
+    } else {
+      console.log('✅ Good: No password found in JWT token');
+    }
+    
+    return decoded;
+  } catch (error) {
+    console.error('Failed to decode JWT token:', error);
+    return null;
+  }
+};
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -25,12 +54,16 @@ const Login = () => {
     event.preventDefault();
     setError('');
     try {
-      const response = await axios.post('https://shoppeappnow.com/api/auth/login', { username, password });
+      const response = await axios.post('http://localhost:8000/api/auth/login', { username, password });
       const { token, role } = response.data; // Get token and role from response
       console.log(response);
       console.log(response.data);
       console.log(response.data.token);
       console.log(response.data.role);
+      
+      // Decode and log token contents for debugging
+      decodeAndLogToken(token);
+      
       // Store token in local storage
       localStorage.setItem('token', token);
       localStorage.setItem('role', role);
