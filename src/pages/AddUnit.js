@@ -15,7 +15,8 @@ import {
   Switch,
   RadioGroup,
   FormControl,
-  Radio
+  Radio,
+  Autocomplete
 } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
 import { useLocation } from 'react-router-dom';
@@ -28,6 +29,7 @@ const AddUnit = () => {
   const [prepackaged_b, setPrepackagedB] = useState(false);
   const [products, setProducts] = useState([]);
   const [existingUnits, setExistingUnits] = useState([]);
+  const [allUnitTypes, setAllUnitTypes] = useState([]); // Store all unique unit types
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -39,7 +41,7 @@ const AddUnit = () => {
 
   const location = useLocation();
 
-  // Fetch products when the component loads
+  // Fetch products and all unit types when the component loads
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -49,7 +51,20 @@ const AddUnit = () => {
         console.error('Error fetching products:', error);
       }
     };
+
+    const fetchAllUnitTypes = async () => {
+      try {
+        const response = await axiosInstance.get('/units');
+        // Extract unique unit types from all units
+        const uniqueUnitTypes = [...new Set(response.data.map(unit => unit.unit_type))];
+        setAllUnitTypes(uniqueUnitTypes);
+      } catch (error) {
+        console.error('Error fetching unit types:', error);
+      }
+    };
+
     fetchProducts();
+    fetchAllUnitTypes();
   }, []);
 
   // Get the product ID from query params if available
@@ -182,13 +197,25 @@ const AddUnit = () => {
                           <Typography variant="subtitle1">Buying Information</Typography>
                         </Grid>
                         <Grid item xs={12}>
-                          <TextField
-                            label="Buying Unit Type"
-                            variant="outlined"
-                            fullWidth
+                          <Autocomplete
+                            freeSolo
+                            options={allUnitTypes}
                             value={buying_unit_type}
-                            onChange={(e) => setBuyingUnitType(e.target.value)}
-                            required
+                            onChange={(event, newValue) => {
+                              setBuyingUnitType(newValue || '');
+                            }}
+                            onInputChange={(event, newInputValue) => {
+                              setBuyingUnitType(newInputValue);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Buying Unit Type"
+                                variant="outlined"
+                                fullWidth
+                                required
+                              />
+                            )}
                           />
                         </Grid>
                         <Grid item xs={12}>
@@ -207,13 +234,25 @@ const AddUnit = () => {
                           <Typography variant="subtitle1">Selling Information</Typography>
                         </Grid>
                         <Grid item xs={12}>
-                          <TextField
-                            label="Selling Unit Type"
-                            variant="outlined"
-                            fullWidth
+                          <Autocomplete
+                            freeSolo
+                            options={allUnitTypes}
                             value={selling_unit_type}
-                            onChange={(e) => setSellingUnitType(e.target.value)}
-                            required
+                            onChange={(event, newValue) => {
+                              setSellingUnitType(newValue || '');
+                            }}
+                            onInputChange={(event, newInputValue) => {
+                              setSellingUnitType(newInputValue);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Selling Unit Type"
+                                variant="outlined"
+                                fullWidth
+                                required
+                              />
+                            )}
                           />
                         </Grid>
                         <Grid item xs={12}>
@@ -248,13 +287,25 @@ const AddUnit = () => {
                     ) : (
                       <>
                         <Grid item xs={12}>
-                          <TextField
-                            label="New Unit Type"
-                            variant="outlined"
-                            fullWidth
+                          <Autocomplete
+                            freeSolo
+                            options={allUnitTypes}
                             value={newUnitType}
-                            onChange={(e) => setNewUnitType(e.target.value)}
-                            required
+                            onChange={(event, newValue) => {
+                              setNewUnitType(newValue || '');
+                            }}
+                            onInputChange={(event, newInputValue) => {
+                              setNewUnitType(newInputValue);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="New Unit Type"
+                                variant="outlined"
+                                fullWidth
+                                required
+                              />
+                            )}
                           />
                         </Grid>
                         {/* Radio Button for Buying or Selling Unit */}

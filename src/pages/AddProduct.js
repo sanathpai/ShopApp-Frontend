@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, TextField, Button, Box, Typography, Grid, Snackbar, Alert, Card, CardContent, CardActions, List, ListItem, ListItemText } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
 import { useNavigate } from 'react-router-dom';
@@ -13,15 +13,16 @@ const AddProduct = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [searchResults, setSearchResults] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
+  const justSelectedRef = useRef(false); // Track if we just selected a product
   const navigate = useNavigate();
 
   useEffect(() => {
     // Fetch search results if product name length > 2
-    if (productName.length > 2 && isOnline) { // Check network status before API call
+    if (productName.length > 2 && isOnline && !justSelectedRef.current) {
       axiosInstance.get(`/products/search?q=${productName}`)
         .then(response => {
           const uniqueResults = response.data.reduce((acc, product) => {
-            const key = `${product.product_name}-${product.variety}`;
+            const key = product.product_name;
             if (!acc[key]) {
               acc[key] = product;
             }
@@ -38,7 +39,12 @@ const AddProduct = () => {
     } else {
       setSearchResults([]); // Clear results when input is too short or offline
     }
-  }, [productName, isOnline]); // Include isOnline in dependency array
+    
+    // Reset the justSelected flag after the effect runs
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+    }
+  }, [productName, isOnline]);
 
   useEffect(() => {
     // Handle network status changes
@@ -68,6 +74,7 @@ const AddProduct = () => {
   }, []);
 
   const handleSelectProduct = (product) => {
+    justSelectedRef.current = true; // Set flag to prevent immediate search
     setProductName(product.product_name);
     setCategory(product.category);
     setVariety(product.variety);
@@ -138,7 +145,7 @@ const AddProduct = () => {
                   <List>
                     {searchResults.map((product, index) => (
                       <ListItem button key={index} onClick={() => handleSelectProduct(product)}>
-                        <ListItemText primary={product.product_name} secondary={product.variety} />
+                        <ListItemText primary={product.product_name} />
                       </ListItem>
                     ))}
                   </List>
