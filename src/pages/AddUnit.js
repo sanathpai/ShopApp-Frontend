@@ -29,7 +29,7 @@ const AddUnit = () => {
   const [prepackaged_b, setPrepackagedB] = useState(false);
   const [products, setProducts] = useState([]);
   const [existingUnits, setExistingUnits] = useState([]);
-  const [allUnitTypes, setAllUnitTypes] = useState([]); // Store all unique unit types
+  const [productUnitTypes, setProductUnitTypes] = useState([]); // Store unit types for selected product only
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -41,7 +41,7 @@ const AddUnit = () => {
 
   const location = useLocation();
 
-  // Fetch products and all unit types when the component loads
+  // Fetch products when the component loads
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -52,19 +52,7 @@ const AddUnit = () => {
       }
     };
 
-    const fetchAllUnitTypes = async () => {
-      try {
-        const response = await axiosInstance.get('/units');
-        // Extract unique unit types from all units
-        const uniqueUnitTypes = [...new Set(response.data.map(unit => unit.unit_type))];
-        setAllUnitTypes(uniqueUnitTypes);
-      } catch (error) {
-        console.error('Error fetching unit types:', error);
-      }
-    };
-
     fetchProducts();
-    fetchAllUnitTypes();
   }, []);
 
   // Get the product ID from query params if available
@@ -81,22 +69,48 @@ const AddUnit = () => {
     if (product_id) {
       const fetchUnits = async () => {
         try {
-          const response = await axiosInstance.get(`/units/product/${product_id}`);
-          setExistingUnits(response.data);
+          // First get the selected product to find its product name
+          const selectedProduct = products.find(p => p.product_id == product_id);
+          
+          if (selectedProduct) {
+            // Get all products with the same product name (all varieties)
+            const sameProductVarieties = products.filter(p => p.product_name === selectedProduct.product_name);
+            
+            // Fetch units for all varieties of this product
+            const unitPromises = sameProductVarieties.map(product => 
+              axiosInstance.get(`/units/product/${product.product_id}`)
+            );
+            
+            const unitResponses = await Promise.all(unitPromises);
+            
+            // Combine all units from all varieties
+            const allUnitsForProduct = unitResponses.flatMap(response => response.data);
+            
+            // Set existing units (for the specific product_id - needed for the existing unit dropdown)
+            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id == product_id);
+            setExistingUnits(specificProductUnits);
+            
+            // Extract unique unit types for all varieties of this product
+            const uniqueUnitTypes = [...new Set(allUnitsForProduct.map(unit => unit.unit_type))];
+            setProductUnitTypes(uniqueUnitTypes);
 
-          // Check if units already exist for this product
-          if (response.data.length > 0) {
-            setIsAddingNewUnit(true); // This means there are existing units, so show the new unit form
-          } else {
-            setIsAddingNewUnit(false); // No existing units, show the full form for adding both buying and selling units
+            // Check if units already exist for this specific product
+            if (specificProductUnits.length > 0) {
+              setIsAddingNewUnit(true); // This means there are existing units, so show the new unit form
+            } else {
+              setIsAddingNewUnit(false); // No existing units, show the full form for adding both buying and selling units
+            }
           }
         } catch (error) {
           console.error('Error fetching units:', error);
         }
       };
       fetchUnits();
+    } else {
+      // Clear unit types when no product is selected
+      setProductUnitTypes([]);
     }
-  }, [product_id]);
+  }, [product_id, products]);
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
@@ -199,7 +213,7 @@ const AddUnit = () => {
                         <Grid item xs={12}>
                           <Autocomplete
                             freeSolo
-                            options={allUnitTypes}
+                            options={productUnitTypes}
                             value={buying_unit_type}
                             onChange={(event, newValue) => {
                               setBuyingUnitType(newValue || '');
@@ -236,7 +250,7 @@ const AddUnit = () => {
                         <Grid item xs={12}>
                           <Autocomplete
                             freeSolo
-                            options={allUnitTypes}
+                            options={productUnitTypes}
                             value={selling_unit_type}
                             onChange={(event, newValue) => {
                               setSellingUnitType(newValue || '');
@@ -289,7 +303,7 @@ const AddUnit = () => {
                         <Grid item xs={12}>
                           <Autocomplete
                             freeSolo
-                            options={allUnitTypes}
+                            options={productUnitTypes}
                             value={newUnitType}
                             onChange={(event, newValue) => {
                               setNewUnitType(newValue || '');
