@@ -16,10 +16,15 @@ import {
   RadioGroup,
   FormControl,
   Radio,
-  Autocomplete
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const AddUnit = () => {
   const [product_id, setProductId] = useState('');
@@ -38,8 +43,12 @@ const AddUnit = () => {
   const [conversionRate, setConversionRate] = useState('');
   const [isAddingNewUnit, setIsAddingNewUnit] = useState(false);
   const [unitCategory, setUnitCategory] = useState('buying'); // Add state to handle buying or selling radio button
+  const [addAnotherDialogOpen, setAddAnotherDialogOpen] = useState(false);
+  const [fromProductFlow, setFromProductFlow] = useState(false);
+  const [currentProductInfo, setCurrentProductInfo] = useState(null);
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Fetch products when the component loads
   useEffect(() => {
@@ -59,8 +68,13 @@ const AddUnit = () => {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const productIdFromParams = queryParams.get('product_id');
+    const fromProduct = queryParams.get('from_product') === 'true';
+    
     if (productIdFromParams) {
       setProductId(productIdFromParams);
+    }
+    if (fromProduct) {
+      setFromProductFlow(true);
     }
   }, [location]);
 
@@ -70,7 +84,7 @@ const AddUnit = () => {
       const fetchUnits = async () => {
         try {
           // First get the selected product to find its product name
-          const selectedProduct = products.find(p => p.product_id == product_id);
+          const selectedProduct = products.find(p => p.product_id === product_id);
           
           if (selectedProduct) {
             // Get all products with the same product name (all varieties)
@@ -87,7 +101,7 @@ const AddUnit = () => {
             const allUnitsForProduct = unitResponses.flatMap(response => response.data);
             
             // Set existing units (for the specific product_id - needed for the existing unit dropdown)
-            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id == product_id);
+            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === product_id);
             setExistingUnits(specificProductUnits);
             
             // Extract unique unit types for all varieties of this product
@@ -152,20 +166,55 @@ const AddUnit = () => {
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
 
-      // Reset the form fields
-      setProductId('');
-      setBuyingUnitType('');
-      setSellingUnitType('');
-      setPrepackaged(false);
-      setPrepackagedB(false);
-      setNewUnitType('');
-      setSelectedExistingUnit('');
-      setConversionRate('');
+      // If coming from product flow, ask if they want to add another unit
+      if (fromProductFlow) {
+        const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
+        setCurrentProductInfo(selectedProduct);
+        setAddAnotherDialogOpen(true);
+      } else {
+        // Reset the form fields for regular flow
+        resetForm();
+      }
     } catch (error) {
       // Show error message
       setSnackbarMessage('Error adding unit: ' + (error.response ? error.response.data.error : error.message));
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
+    }
+  };
+
+  const resetForm = () => {
+    setProductId('');
+    setBuyingUnitType('');
+    setSellingUnitType('');
+    setPrepackaged(false);
+    setPrepackagedB(false);
+    setNewUnitType('');
+    setSelectedExistingUnit('');
+    setConversionRate('');
+  };
+
+  const handleAddAnotherUnit = () => {
+    setAddAnotherDialogOpen(false);
+    // Reset only the unit-related fields, keep the product_id
+    setBuyingUnitType('');
+    setSellingUnitType('');
+    setPrepackaged(false);
+    setPrepackagedB(false);
+    setNewUnitType('');
+    setSelectedExistingUnit('');
+    setConversionRate('');
+    setUnitCategory('buying');
+    // Refresh the units data
+    window.location.reload();
+  };
+
+  const handleFinishAddingUnits = () => {
+    setAddAnotherDialogOpen(false);
+    // Navigate to stock entry page
+    const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
+    if (selectedProduct) {
+      navigate(`/dashboard/inventories/stock-entry?product_id=${selectedProduct.product_id}&product_name=${encodeURIComponent(selectedProduct.product_name)}&variety=${encodeURIComponent(selectedProduct.variety || '')}`);
     }
   };
 
@@ -404,6 +453,24 @@ const AddUnit = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* Add Another Unit Dialog */}
+      <Dialog open={addAnotherDialogOpen} onClose={() => setAddAnotherDialogOpen(false)}>
+        <DialogTitle>Add Another Unit?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Would you like to add another unit for "{currentProductInfo?.product_name}"?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleFinishAddingUnits} color="primary">
+            No, Proceed to Stock Entry
+          </Button>
+          <Button onClick={handleAddAnotherUnit} color="primary" variant="contained">
+            Yes, Add Another Unit
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

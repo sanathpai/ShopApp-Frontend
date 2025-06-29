@@ -289,12 +289,6 @@ const handleReportExport = async (filter) => {
       </ListItem>
       <Collapse in={openInventories} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-          <ListItem button component={Link} to="/dashboard/inventories/add" sx={{ pl: 4 }} onClick={onItemClick}>
-            <ListItemIcon>
-              <InventoryIcon />
-            </ListItemIcon>
-            <ListItemText primary="Add Inventory" />
-          </ListItem>
           <ListItem button component={Link} to="/dashboard/inventories/view" sx={{ pl: 4 }} onClick={onItemClick}>
             <ListItemIcon>
               <InventoryIcon />
