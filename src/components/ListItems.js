@@ -322,7 +322,7 @@ const handleReportExport = async (filter) => {
         </List>
       </Collapse>
 
-      <ListItem button onClick={handleSuppliersClick}>
+      {/* <ListItem button onClick={handleSuppliersClick}>
         <ListItemIcon>
           <LayersIcon />
         </ListItemIcon>
@@ -344,7 +344,7 @@ const handleReportExport = async (filter) => {
             <ListItemText primary="View Sources" />
           </ListItem>
         </List>
-      </Collapse>
+      </Collapse> */}
 
       <ListItem button onClick={handleSalesClick}>
         <ListItemIcon>

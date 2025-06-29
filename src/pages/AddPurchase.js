@@ -182,7 +182,7 @@ const AddPurchase = () => {
                     </Select>
                   </FormControl>
 
-                  <FormControl fullWidth required>
+                  {/* <FormControl fullWidth required>
                     <InputLabel>Purchased From</InputLabel>
                     <Select value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
                       {suppliers.map((supplier) => (
@@ -191,10 +191,10 @@ const AddPurchase = () => {
                         </MenuItem>
                       ))}
                     </Select>
-                  </FormControl>
-                  <Button onClick={() => setModalOpen(true)} color="secondary">
+                  </FormControl> */}
+                  {/* <Button onClick={() => setModalOpen(true)} color="secondary">
                     Add Source
-                  </Button>
+                  </Button> */}
 
                   <TextField
                     label={`Order Price (per ${selectedUnitType || 'unit'}) (K)`}
