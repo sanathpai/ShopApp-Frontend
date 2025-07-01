@@ -25,7 +25,7 @@ const ForgotPassword = () => {
     setMessage('');
 
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/forgot-password', { email });
+      const response = await axios.post('https://shoppeappnow.com/api/auth/forgot-password', { email });
       setMessage('A password reset link has been sent to your email.');
       setEmail(''); // Clear email input after submission
       console.error('here');

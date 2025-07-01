@@ -84,7 +84,7 @@ const Register = () => {
       if (username) params.append('username', username);
       if (email) params.append('email', email);
       
-      const response = await axios.get(`http://localhost:8000/api/auth/check-duplicates?${params}`);
+      const response = await axios.get(`https://shoppeappnow.com/api/auth/check-duplicates?${params}`);
       const duplicates = response.data;
       
       setFieldErrors(prev => ({
