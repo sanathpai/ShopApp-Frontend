@@ -21,7 +21,7 @@ const ResetPassword = () => {
     }
 
     try {
-        const response = await axios.post(`https://shoppeappnow/api/auth/reset-password/${token}`, {
+        const response = await axios.post(`https://shoppeappnow.com/api/auth/reset-password/${token}`, {
             password,
           });
 
