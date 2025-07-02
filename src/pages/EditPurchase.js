@@ -34,6 +34,7 @@ const EditPurchase = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dateWarning, setDateWarning] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -176,6 +177,15 @@ const EditPurchase = () => {
       : 'Order Price per unit';
   };
 
+  const checkFutureDate = (date) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+      setDateWarning('Warning: You are entering a future date for this purchase.');
+    } else {
+      setDateWarning('');
+    }
+  };
+
   return (
     <Container maxWidth="md">
       <Card>
@@ -252,13 +262,21 @@ const EditPurchase = () => {
                     variant="outlined"
                     fullWidth
                     value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    onChange={(e) => {
+                      setPurchaseDate(e.target.value);
+                      checkFutureDate(e.target.value);
+                    }}
                     required
                     type="date"
                     InputLabelProps={{
                       shrink: true
                     }}
                   />
+                  {dateWarning && (
+                    <Typography color="warning.main" variant="body2">
+                      {dateWarning}
+                    </Typography>
+                  )}
                   <Button type="submit" variant="contained" color="primary">
                     Update Purchase
                   </Button>

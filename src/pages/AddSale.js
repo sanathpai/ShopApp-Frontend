@@ -28,6 +28,7 @@ const AddSale = () => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [isProductSelected, setIsProductSelected] = useState(false); // To control visibility
+  const [dateWarning, setDateWarning] = useState('');
 
   // Fetch products when the component is mounted
   useEffect(() => {
@@ -110,6 +111,15 @@ const AddSale = () => {
       : 'Retail Price per unit (K)';
   };
 
+  const checkFutureDate = (date) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+      setDateWarning('Warning: You are entering a future date for this sale.');
+    } else {
+      setDateWarning('');
+    }
+  };
+
   return (
     <Container maxWidth="md">
       <Card>
@@ -170,13 +180,21 @@ const AddSale = () => {
                     variant="outlined"
                     fullWidth
                     value={saleDate}
-                    onChange={(e) => setSaleDate(e.target.value)}
+                    onChange={(e) => {
+                      setSaleDate(e.target.value);
+                      checkFutureDate(e.target.value);
+                    }}
                     required
                     type="date"
                     InputLabelProps={{
                       shrink: true,
                     }}
                   />
+                  {dateWarning && (
+                    <Typography color="warning.main" variant="body2">
+                      {dateWarning}
+                    </Typography>
+                  )}
                   <Button type="submit" variant="contained" color="primary">
                     Add Sale
                   </Button>

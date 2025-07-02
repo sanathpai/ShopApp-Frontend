@@ -35,6 +35,7 @@ const AddPurchase = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [suppliers, setSuppliers] = useState([]);
   const [isProductSelected, setIsProductSelected] = useState(false);
+  const [dateWarning, setDateWarning] = useState('');
 
   // Modal State for Adding a New Source
   const [modalOpen, setModalOpen] = useState(false);
@@ -149,6 +150,15 @@ const AddPurchase = () => {
     setSnackbarOpen(false);
   };
 
+  const checkFutureDate = (date) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+      setDateWarning('Warning: You are entering a future date for this purchase.');
+    } else {
+      setDateWarning('');
+    }
+  };
+
   return (
     <Container maxWidth="md">
       <Card>
@@ -219,13 +229,21 @@ const AddPurchase = () => {
                     variant="outlined"
                     fullWidth
                     value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    onChange={(e) => {
+                      setPurchaseDate(e.target.value);
+                      checkFutureDate(e.target.value);
+                    }}
                     required
                     type="date"
                     InputLabelProps={{
                       shrink: true,
                     }}
                   />
+                  {dateWarning && (
+                    <Typography color="warning.main" variant="body2">
+                      {dateWarning}
+                    </Typography>
+                  )}
                   <Button type="submit" variant="contained" color="primary">
                     Add Purchase
                   </Button>

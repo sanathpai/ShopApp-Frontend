@@ -32,6 +32,7 @@ const EditSale = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [loading, setLoading] = useState(true);
   const [isProductSelected, setIsProductSelected] = useState(false);
+  const [dateWarning, setDateWarning] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,11 +150,21 @@ const EditSale = () => {
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
   };
+
   const getSalePriceLabel = () => {
     const selectedUnit = unitTypes.find(unit => unit.unit_id === selectedUnitId);
     return selectedUnit
       ? `Retail Price (per ${selectedUnit.unit_type})`
       : 'Retail Price per unit';
+  };
+
+  const checkFutureDate = (date) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+      setDateWarning('Warning: You are entering a future date for this sale.');
+    } else {
+      setDateWarning('');
+    }
   };
 
   return (
@@ -219,13 +230,21 @@ const EditSale = () => {
                     variant="outlined"
                     fullWidth
                     value={saleDate}
-                    onChange={(e) => setSaleDate(e.target.value)}
+                    onChange={(e) => {
+                      setSaleDate(e.target.value);
+                      checkFutureDate(e.target.value);
+                    }}
                     required
                     type="date"
                     InputLabelProps={{
                       shrink: true
                     }}
                   />
+                  {dateWarning && (
+                    <Typography color="warning.main" variant="body2">
+                      {dateWarning}
+                    </Typography>
+                  )}
                   <Button type="submit" variant="contained" color="primary">
                     Update Sale
                   </Button>
