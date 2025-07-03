@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, TextField, Button, Box, Typography, Grid, Snackbar, Alert, Card, CardContent, CardActions, List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Container, TextField, Button, Box, Typography, Grid, Snackbar, Alert, Card, CardContent, CardActions, List, ListItem, ListItemText } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,8 +13,6 @@ const AddProduct = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [searchResults, setSearchResults] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [newProductInfo, setNewProductInfo] = useState(null);
   const justSelectedRef = useRef(false); // Track if we just selected a product
   const navigate = useNavigate();
 
@@ -109,42 +107,14 @@ const AddProduct = () => {
 
       const newProductId = response.data.product_id;
       
-      // Store product info and show confirmation dialog
-      setNewProductInfo({
-        id: newProductId,
-        name: productName,
-        variety: variety,
-        category: category
-      });
-      setConfirmDialogOpen(true);
+      // Automatically navigate to Add Unit page with current product selected
+      navigate(`/dashboard/units/add?product_id=${newProductId}&from_product=true`);
 
     } catch (error) {
       setSnackbarMessage('Error adding product: ' + (error.response ? error.response.data.error : error.message));
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
-  };
-
-  const handleConfirmAddUnits = () => {
-    setConfirmDialogOpen(false);
-    // Navigate to Add Unit page with current product selected
-    navigate(`/dashboard/units/add?product_id=${newProductInfo.id}&from_product=true`);
-  };
-
-  const handleSkipAddUnits = () => {
-    setConfirmDialogOpen(false);
-    // Navigate directly to stock entry page
-    navigate(`/dashboard/inventories/stock-entry?product_id=${newProductInfo.id}&product_name=${encodeURIComponent(newProductInfo.name)}&variety=${encodeURIComponent(newProductInfo.variety || '')}`);
-  };
-
-  const handleDialogClose = () => {
-    setConfirmDialogOpen(false);
-    // Reset form for next product
-    setProductName('');
-    setCategory('');
-    setVariety('');
-    setDescription('');
-    setNewProductInfo(null);
   };
 
   const handleSnackbarClose = (event, reason) => {
@@ -225,24 +195,6 @@ const AddProduct = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-      
-      {/* Confirmation Dialog */}
-      <Dialog open={confirmDialogOpen} onClose={handleDialogClose}>
-        <DialogTitle>Add Additional Units?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Would you like to add additional units of sale or purchase to "{newProductInfo?.name}" other than the default buying and selling units?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleSkipAddUnits} color="primary">
-            No, Proceed to Stock Entry
-          </Button>
-          <Button onClick={handleConfirmAddUnits} color="primary" variant="contained">
-            Yes, Add Units
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 };

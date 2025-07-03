@@ -46,6 +46,15 @@ const AddUnit = () => {
   const [addAnotherDialogOpen, setAddAnotherDialogOpen] = useState(false);
   const [fromProductFlow, setFromProductFlow] = useState(false);
   const [currentProductInfo, setCurrentProductInfo] = useState(null);
+  const [firstTimeBuyingUnit, setFirstTimeBuyingUnit] = useState(''); // Track first buying unit name
+  const [firstTimeSellingUnit, setFirstTimeSellingUnit] = useState(''); // Track first selling unit name
+  
+  // New state variables for pricing
+  const [retailPrice, setRetailPrice] = useState('');
+  const [orderPrice, setOrderPrice] = useState('');
+  const [profitWarningOpen, setProfitWarningOpen] = useState(false);
+  const [calculatedProfitMargin, setCalculatedProfitMargin] = useState(0);
+  const [pendingFormData, setPendingFormData] = useState(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -126,9 +135,39 @@ const AddUnit = () => {
     }
   }, [product_id, products]);
 
+  // Calculate profit margin when relevant values change
+  useEffect(() => {
+    if (retailPrice && orderPrice && conversionRate) {
+      const margin = calculateProfitMargin(retailPrice, orderPrice, conversionRate);
+      setCalculatedProfitMargin(margin || 0);
+    } else {
+      setCalculatedProfitMargin(0);
+    }
+  }, [retailPrice, orderPrice, conversionRate]);
+
+  // Function to calculate profit margin
+  const calculateProfitMargin = (retailPriceValue, orderPriceValue, conversionRateValue) => {
+    const retail = parseFloat(retailPriceValue);
+    const order = parseFloat(orderPriceValue);
+    const conversion = parseFloat(conversionRateValue);
+    
+    if (isNaN(retail) || isNaN(order) || isNaN(conversion) || conversion === 0 || order === 0) {
+      return null;
+    }
+    
+    // Cost per selling unit = Order Price / Conversion Rate
+    const costPerSellingUnit = order / conversion;
+    
+    // Profit margin = (Retail Price - Cost per selling unit) / Cost per selling unit
+    const profitMargin = (retail - costPerSellingUnit) / costPerSellingUnit;
+    
+    return profitMargin;
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     console.log("Conversion rate before submit:", conversionRate);
+    
     // Validate required fields
     if ((!isAddingNewUnit && (!buying_unit_type || !selling_unit_type)) || !conversionRate) {
       setSnackbarMessage('Please enter all required fields');
@@ -137,45 +176,124 @@ const AddUnit = () => {
       return;
     }
 
+    // For the first-time unit addition, validate pricing if both prices are provided
+    if (!isAddingNewUnit && retailPrice && orderPrice && conversionRate) {
+      const profitMargin = calculateProfitMargin(retailPrice, orderPrice, conversionRate);
+      
+      if (profitMargin !== null && (profitMargin < 0 || profitMargin > 1)) {
+        // Store form data and show warning dialog
+        const unitData = {
+          product_id,
+          buying_unit_type,
+          selling_unit_type,
+          conversion_rate: conversionRate,
+          prepackaged,
+          prepackaged_b,
+          retail_price: retailPrice,
+          order_price: orderPrice
+        };
+        setPendingFormData(unitData);
+        setCalculatedProfitMargin(profitMargin);
+        setProfitWarningOpen(true);
+        return;
+      }
+    }
+
+    // For adding new units, validate pricing if both prices are provided
+    if (isAddingNewUnit && retailPrice && orderPrice && conversionRate) {
+      const profitMargin = calculateProfitMargin(retailPrice, orderPrice, conversionRate);
+      
+      if (profitMargin !== null && (profitMargin < 0 || profitMargin > 1)) {
+        // Store form data and show warning dialog
+        const unitData = {
+          product_id,
+          newUnitType,
+          selectedExistingUnit,
+          conversion_rate: conversionRate,
+          prepackaged,
+          unitCategory,
+          retail_price: retailPrice,
+          order_price: orderPrice
+        };
+        setPendingFormData(unitData);
+        setCalculatedProfitMargin(profitMargin);
+        setProfitWarningOpen(true);
+        return;
+      }
+    }
+
+    // Proceed with form submission
+    await submitForm();
+  };
+
+  const submitForm = async (formData = null) => {
     try {
       // Construct unit data based on whether it's the first time adding or adding a new unit
-      const unitData = isAddingNewUnit
-        ? {
-            product_id,
-            newUnitType,
-            selectedExistingUnit,
-            conversion_rate: conversionRate,
-            prepackaged,
-            unitCategory // Add the unitCategory for buying/selling selection
-          }
-        : {
-            product_id,
-            buying_unit_type,
-            selling_unit_type,
-            conversion_rate: conversionRate,
-            prepackaged,
-            prepackaged_b,
-            unitCategory
-          };
+      let unitData;
+      
+      if (formData) {
+        // Use provided form data (from warning dialog)
+        unitData = formData;
+        
+        // If this is first-time creation from warning dialog, store the unit names
+        if (!isAddingNewUnit && formData.buying_unit_type && formData.selling_unit_type) {
+          setFirstTimeBuyingUnit(formData.buying_unit_type);
+          setFirstTimeSellingUnit(formData.selling_unit_type);
+        }
+      } else if (isAddingNewUnit) {
+        // Subsequent unit addition - send data for adding one new unit
+        unitData = {
+          product_id,
+          newUnitType,
+          selectedExistingUnit,
+          conversion_rate: conversionRate,
+          prepackaged,
+          unitCategory, // This is required for subsequent additions
+          retail_price: retailPrice || '', // Always send these fields
+          order_price: orderPrice || ''     // Always send these fields
+        };
+      } else {
+        // First-time unit creation - send data for creating both buying and selling units
+        unitData = {
+          product_id,
+          buying_unit_type,
+          selling_unit_type,
+          conversion_rate: conversionRate,
+          prepackaged,
+          prepackaged_b,
+          retail_price: retailPrice || '', // Always send retail_price for selling unit
+          order_price: orderPrice || ''    // Always send order_price for buying unit
+          // Note: Don't send unitCategory for first-time creation
+        };
+        
+        // Store the first-time unit names for the dialog
+        setFirstTimeBuyingUnit(buying_unit_type);
+        setFirstTimeSellingUnit(selling_unit_type);
+      }
+
+      console.log("Unit data being sent:", unitData);
 
       // Send the data to the backend
       await axiosInstance.post('/units', unitData);
-
+      
       // Show success message
       setSnackbarMessage('Unit added successfully');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
 
-      // If coming from product flow, ask if they want to add another unit
+      // If coming from product flow, handle the next step
       if (fromProductFlow) {
         const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
         setCurrentProductInfo(selectedProduct);
+        
+        // Always show the dialog when coming from product flow (both first time and subsequent)
         setAddAnotherDialogOpen(true);
       } else {
         // Reset the form fields for regular flow
         resetForm();
       }
     } catch (error) {
+      console.error('Error adding unit:', error);
       // Show error message
       setSnackbarMessage('Error adding unit: ' + (error.response ? error.response.data.error : error.message));
       setSnackbarSeverity('error');
@@ -192,6 +310,13 @@ const AddUnit = () => {
     setNewUnitType('');
     setSelectedExistingUnit('');
     setConversionRate('');
+    setRetailPrice('');
+    setOrderPrice('');
+    setUnitCategory('buying');
+    setCalculatedProfitMargin(0);
+    setPendingFormData(null);
+    setFirstTimeBuyingUnit('');
+    setFirstTimeSellingUnit('');
   };
 
   const handleAddAnotherUnit = () => {
@@ -205,8 +330,48 @@ const AddUnit = () => {
     setSelectedExistingUnit('');
     setConversionRate('');
     setUnitCategory('buying');
-    // Refresh the units data
-    window.location.reload();
+    setRetailPrice('');
+    setOrderPrice('');
+    setCalculatedProfitMargin(0);
+    setPendingFormData(null);
+    
+    // Refresh the units data for the current product without reloading the page
+    if (product_id) {
+      const fetchUnits = async () => {
+        try {
+          const selectedProduct = products.find(p => p.product_id === product_id);
+          
+          if (selectedProduct) {
+            // Get all products with the same product name (all varieties)
+            const sameProductVarieties = products.filter(p => p.product_name === selectedProduct.product_name);
+            
+            // Fetch units for all varieties of this product
+            const unitPromises = sameProductVarieties.map(product => 
+              axiosInstance.get(`/units/product/${product.product_id}`)
+            );
+            
+            const unitResponses = await Promise.all(unitPromises);
+            
+            // Combine all units from all varieties
+            const allUnitsForProduct = unitResponses.flatMap(response => response.data);
+            
+            // Set existing units (for the specific product_id - needed for the existing unit dropdown)
+            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === product_id);
+            setExistingUnits(specificProductUnits);
+            
+            // Extract unique unit types for all varieties of this product
+            const uniqueUnitTypes = [...new Set(allUnitsForProduct.map(unit => unit.unit_type))];
+            setProductUnitTypes(uniqueUnitTypes);
+
+            // Since we now have existing units, set to adding new unit mode
+            setIsAddingNewUnit(true);
+          }
+        } catch (error) {
+          console.error('Error fetching units:', error);
+        }
+      };
+      fetchUnits();
+    }
   };
 
   const handleFinishAddingUnits = () => {
@@ -294,6 +459,18 @@ const AddUnit = () => {
                           />
                         </Grid>
                         <Grid item xs={12}>
+                          <TextField
+                            label="Current Order Price of Buying Unit"
+                            variant="outlined"
+                            fullWidth
+                            type="number"
+                            inputProps={{ step: "0.01", min: "0" }}
+                            value={orderPrice}
+                            onChange={(e) => setOrderPrice(e.target.value)}
+                            helperText={`Price per ${buying_unit_type || 'buying unit'}`}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
                           <Typography variant="subtitle1">Selling Information</Typography>
                         </Grid>
                         <Grid item xs={12}>
@@ -332,6 +509,18 @@ const AddUnit = () => {
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
+                            label="Current Retail Price of Selling Unit"
+                            variant="outlined"
+                            fullWidth
+                            type="number"
+                            inputProps={{ step: "0.01", min: "0" }}
+                            value={retailPrice}
+                            onChange={(e) => setRetailPrice(e.target.value)}
+                            helperText={`Price per ${selling_unit_type || 'selling unit'}`}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
                             label={`Please Enter How many ${selling_unit_type || 'second unit type'} are there in ${buying_unit_type || 'first unit type'}?`}
                             variant="outlined"
                             fullWidth
@@ -346,6 +535,41 @@ const AddUnit = () => {
                             required
                           />
                         </Grid>
+                        {/* Real-time Profit Margin Display */}
+                        {retailPrice && orderPrice && conversionRate && (
+                          <Grid item xs={12}>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: calculatedProfitMargin !== null && (calculatedProfitMargin < 0 || calculatedProfitMargin > 1) ? 'warning.light' : 'info.light',
+                              borderRadius: 1,
+                              border: 1,
+                              borderColor: calculatedProfitMargin !== null && (calculatedProfitMargin < 0 || calculatedProfitMargin > 1) ? 'warning.main' : 'info.main'
+                            }}>
+                              <Typography variant="subtitle2" gutterBottom>
+                                <strong>Profit Margin Calculation:</strong>
+                              </Typography>
+                              <Typography variant="body2">
+                                Cost per {selling_unit_type || 'selling unit'}: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+                              </Typography>
+                              <Typography variant="body2">
+                                Profit per {selling_unit_type || 'selling unit'}: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                Profit Margin: {calculatedProfitMargin !== null ? `${(calculatedProfitMargin * 100).toFixed(1)}%` : 'N/A'}
+                              </Typography>
+                              {calculatedProfitMargin !== null && calculatedProfitMargin < 0 && (
+                                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                                  ⚠️ This results in a loss
+                                </Typography>
+                              )}
+                              {calculatedProfitMargin !== null && calculatedProfitMargin > 1 && (
+                                <Typography variant="body2" color="warning.dark" sx={{ mt: 1 }}>
+                                  ⚠️ Profit margin seems unusually high
+                                </Typography>
+                              )}
+                            </Box>
+                          </Grid>
+                        )}
                       </>
                     ) : (
                       <>
@@ -403,6 +627,24 @@ const AddUnit = () => {
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
+                            label={unitCategory === 'buying' ? "Current Order Price of New Unit" : "Current Retail Price of New Unit"}
+                            variant="outlined"
+                            fullWidth
+                            type="number"
+                            inputProps={{ step: "0.01", min: "0" }}
+                            value={unitCategory === 'buying' ? orderPrice : retailPrice}
+                            onChange={(e) => {
+                              if (unitCategory === 'buying') {
+                                setOrderPrice(e.target.value);
+                              } else {
+                                setRetailPrice(e.target.value);
+                              }
+                            }}
+                            helperText={`Price per ${newUnitType || 'new unit'}`}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
                             select
                             label="Select Existing Unit for Comparison"
                             variant="outlined"
@@ -420,7 +662,25 @@ const AddUnit = () => {
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
-                           label={`Please Enter How many ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selected unit type'} are there in ${newUnitType || 'new unit type'}?`}
+                            label={unitCategory === 'buying' ? "Current Retail Price of Existing Selling Unit" : "Current Order Price of Existing Buying Unit"}
+                            variant="outlined"
+                            fullWidth
+                            type="number"
+                            inputProps={{ step: "0.01", min: "0" }}
+                            value={unitCategory === 'buying' ? retailPrice : orderPrice}
+                            onChange={(e) => {
+                              if (unitCategory === 'buying') {
+                                setRetailPrice(e.target.value);
+                              } else {
+                                setOrderPrice(e.target.value);
+                              }
+                            }}
+                            helperText={`Price per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selected unit'}`}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            label={`Please Enter How many ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selected unit type'} are there in ${newUnitType || 'new unit type'}?`}
                             variant="outlined"
                             fullWidth
                             InputLabelProps={{
@@ -434,6 +694,47 @@ const AddUnit = () => {
                             required
                           />
                         </Grid>
+                        {/* Real-time Profit Margin Display for New Unit */}
+                        {retailPrice && orderPrice && conversionRate && newUnitType && selectedExistingUnit && (
+                          <Grid item xs={12}>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: calculatedProfitMargin !== null && (calculatedProfitMargin < 0 || calculatedProfitMargin > 1) ? 'warning.light' : 'info.light',
+                              borderRadius: 1,
+                              border: 1,
+                              borderColor: calculatedProfitMargin !== null && (calculatedProfitMargin < 0 || calculatedProfitMargin > 1) ? 'warning.main' : 'info.main'
+                            }}>
+                              <Typography variant="subtitle2" gutterBottom>
+                                <strong>Profit Margin Calculation:</strong>
+                              </Typography>
+                              <Typography variant="body2">
+                                {unitCategory === 'buying' 
+                                  ? `Cost per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: $${retailPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  : `Cost per ${newUnitType}: $${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                }
+                              </Typography>
+                              <Typography variant="body2">
+                                {unitCategory === 'buying'
+                                  ? `Profit per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: $${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  : `Profit per ${newUnitType}: $${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                }
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                Profit Margin: {calculatedProfitMargin !== null ? `${(calculatedProfitMargin * 100).toFixed(1)}%` : 'N/A'}
+                              </Typography>
+                              {calculatedProfitMargin !== null && calculatedProfitMargin < 0 && (
+                                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                                  ⚠️ This results in a loss
+                                </Typography>
+                              )}
+                              {calculatedProfitMargin !== null && calculatedProfitMargin > 1 && (
+                                <Typography variant="body2" color="warning.dark" sx={{ mt: 1 }}>
+                                  ⚠️ Profit margin seems unusually high
+                                </Typography>
+                              )}
+                            </Box>
+                          </Grid>
+                        )}
                       </>
                     )}
                   </>
@@ -454,12 +755,60 @@ const AddUnit = () => {
         </Alert>
       </Snackbar>
 
-      {/* Add Another Unit Dialog */}
-      <Dialog open={addAnotherDialogOpen} onClose={() => setAddAnotherDialogOpen(false)}>
-        <DialogTitle>Add Another Unit?</DialogTitle>
+      {/* Profit Margin Warning Dialog */}
+      <Dialog open={profitWarningOpen} onClose={() => setProfitWarningOpen(false)}>
+        <DialogTitle>Profit Margin Warning</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Would you like to add another unit for "{currentProductInfo?.product_name}"?
+            {calculatedProfitMargin < 0 
+              ? `The current pricing results in a loss of ${Math.abs(calculatedProfitMargin * 100).toFixed(1)}% per unit sold.`
+              : `The current pricing results in a profit margin of ${(calculatedProfitMargin * 100).toFixed(1)}%, which seems unusually high.`
+            }
+            <br /><br />
+            <strong>Current Calculation:</strong><br />
+            {isAddingNewUnit ? (
+              <>
+                New Unit Type: {newUnitType} ({unitCategory})<br />
+                Existing Unit: {existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type} ({existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_category})<br />
+                {unitCategory === 'buying' ? 'Order' : 'Retail'} Price (New Unit): ${unitCategory === 'buying' ? orderPrice : retailPrice}<br />
+                {unitCategory === 'buying' ? 'Retail' : 'Order'} Price (Existing Unit): ${unitCategory === 'buying' ? retailPrice : orderPrice}<br />
+              </>
+            ) : (
+              <>
+                Retail Price: ${retailPrice}<br />
+                Order Price: ${orderPrice}<br />
+              </>
+            )}
+            Conversion Rate: {conversionRate}<br />
+            Cost per Selling Unit: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}<br />
+            Profit per Unit: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+            <br /><br />
+            Would you like to proceed anyway or update the conversion rate?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setProfitWarningOpen(false)} color="primary">
+            Update Conversion Rate
+          </Button>
+          <Button 
+            onClick={async () => {
+              setProfitWarningOpen(false);
+              await submitForm(pendingFormData);
+            }} 
+            color="primary" 
+            variant="contained"
+          >
+            Proceed Anyway
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Another Unit Dialog */}
+      <Dialog open={addAnotherDialogOpen} onClose={() => setAddAnotherDialogOpen(false)}>
+        <DialogTitle>Add Additional Units?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Would you like to add additional units of sale or purchase to "{currentProductInfo?.product_name}" other than {firstTimeSellingUnit && firstTimeBuyingUnit ? `${firstTimeSellingUnit} and ${firstTimeBuyingUnit}` : 'the existing units'}?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -467,7 +816,7 @@ const AddUnit = () => {
             No, Proceed to Stock Entry
           </Button>
           <Button onClick={handleAddAnotherUnit} color="primary" variant="contained">
-            Yes, Add Another Unit
+            Yes, Add Additional Units
           </Button>
         </DialogActions>
       </Dialog>
@@ -475,4 +824,4 @@ const AddUnit = () => {
   );
 };
 
-export default AddUnit;
+export default AddUnit; 

@@ -29,6 +29,7 @@ const AddSale = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [isProductSelected, setIsProductSelected] = useState(false); // To control visibility
   const [dateWarning, setDateWarning] = useState('');
+  const [currentProduct, setCurrentProduct] = useState(null); // Store current product info
 
   // Fetch products when the component is mounted
   useEffect(() => {
@@ -47,8 +48,13 @@ const AddSale = () => {
   const handleProductChange = async (e) => {
     setProductDetails(e.target.value);
     setIsProductSelected(true); // Enable visibility of other fields
+    // Clear previous selections when product changes
+    setSelectedUnitId('');
+    setRetailPrice('');
+    
     const [productName, variety] = e.target.value.split(' - ');
     const product = products.find(product => product.product_name === productName && product.variety === variety);
+    setCurrentProduct(product);
 
     if (product) {
       try {
@@ -63,6 +69,37 @@ const AddSale = () => {
         })));
       } catch (error) {
         console.error('Error fetching units:', error);
+      }
+    }
+  };
+
+  // New function to handle unit selection and fetch price suggestions
+  const handleUnitChange = async (e) => {
+    setSelectedUnitId(e.target.value);
+    
+    if (e.target.value && currentProduct) {
+      try {
+        console.log(`🔍 Fetching retail price suggestions for product ${currentProduct.product_id}, unit ${e.target.value}`);
+        // Fetch price suggestions for this product-unit combination
+        const response = await axiosInstance.get(`/sales/price-suggestions/${currentProduct.product_id}/${e.target.value}`);
+        
+        console.log('📊 Retail price suggestions response:', response.data);
+        console.log('💰 Suggested retail price:', response.data.suggested_retail_price);
+        console.log('🔢 Price type:', typeof response.data.suggested_retail_price);
+        console.log('✅ Is > 0?', response.data.suggested_retail_price > 0);
+        console.log('📜 Has price history?', response.data.has_price_history);
+        
+        // Populate price if there's any price history (even 0.00 can be useful)
+        if (response.data.has_price_history) {
+          console.log('✅ Has price history, setting retail price to:', response.data.suggested_retail_price.toString());
+          setRetailPrice(response.data.suggested_retail_price.toString());
+        } else {
+          console.log('❌ No price history found, clearing field');
+          setRetailPrice('');
+        }
+      } catch (error) {
+        console.error('Error fetching price suggestions:', error);
+        setRetailPrice(''); // Clear if error
       }
     }
   };
@@ -92,6 +129,7 @@ const AddSale = () => {
       setSelectedUnitId('');
       setProductDetails('');
       setIsProductSelected(false); // Reset product selection
+      setCurrentProduct(null);
     } catch (error) {
       console.error('Error adding sale:', error);
       setSnackbarMessage('Sale Addition failed. Verify if you have enough stocks in inventory');
@@ -147,7 +185,7 @@ const AddSale = () => {
                     <InputLabel>Unit Type (Category)</InputLabel>
                     <Select
                       value={selectedUnitId}
-                      onChange={(e) => setSelectedUnitId(e.target.value)}
+                      onChange={handleUnitChange}
                     >
                       {unitTypes.map((unit) => (
                         <MenuItem key={unit.unit_id} value={unit.unit_id}>

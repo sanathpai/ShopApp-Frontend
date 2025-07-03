@@ -36,6 +36,8 @@ const AddPurchase = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [isProductSelected, setIsProductSelected] = useState(false);
   const [dateWarning, setDateWarning] = useState('');
+  const [currentProduct, setCurrentProduct] = useState(null);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
 
   // Modal State for Adding a New Source
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,8 +65,13 @@ const AddPurchase = () => {
   const handleProductChange = async (e) => {
     setProductDetails(e.target.value);
     setIsProductSelected(true);
+    setSelectedUnitType('');
+    setSelectedUnitId('');
+    setOrderPrice('');
+    
     const [productName, variety] = e.target.value.split(' - ');
     const product = products.find(product => product.product_name === productName && product.variety === variety);
+    setCurrentProduct(product);
 
     if (product) {
       try {
@@ -77,6 +84,38 @@ const AddPurchase = () => {
         })));
       } catch (error) {
         console.error('Error fetching units:', error);
+      }
+    }
+  };
+
+  const handleUnitTypeChange = async (e) => {
+    setSelectedUnitType(e.target.value);
+    const selectedUnit = unitTypes.find(unit => unit.type === e.target.value);
+    
+    if (selectedUnit && currentProduct) {
+      setSelectedUnitId(selectedUnit.id);
+      
+      try {
+        console.log(`🔍 Fetching price suggestions for product ${currentProduct.product_id}, unit ${selectedUnit.id}`);
+        const response = await axiosInstance.get(`/purchases/price-suggestions/${currentProduct.product_id}/${selectedUnit.id}`);
+        
+        console.log('📊 Price suggestions response:', response.data);
+        console.log('💰 Suggested order price:', response.data.suggested_order_price);
+        console.log('🔢 Price type:', typeof response.data.suggested_order_price);
+        console.log('✅ Is > 0?', response.data.suggested_order_price > 0);
+        console.log('📜 Has price history?', response.data.has_price_history);
+        
+        // Populate price if there's any price history (even 0.00 can be useful)
+        if (response.data.has_price_history) {
+          console.log('✅ Has price history, setting order price to:', response.data.suggested_order_price.toString());
+          setOrderPrice(response.data.suggested_order_price.toString());
+        } else {
+          console.log('❌ No price history found, clearing field');
+          setOrderPrice('');
+        }
+      } catch (error) {
+        console.error('Error fetching price suggestions:', error);
+        setOrderPrice('');
       }
     }
   };
@@ -108,8 +147,10 @@ const AddPurchase = () => {
       setQuantity('');
       setPurchaseDate(new Date().toISOString().split('T')[0]);
       setSelectedUnitType('');
+      setSelectedUnitId('');
       setProductDetails('');
       setIsProductSelected(false);
+      setCurrentProduct(null);
     } catch (error) {
       console.error('Error adding purchase:', error);
       setSnackbarMessage('Error adding purchase');
@@ -183,7 +224,7 @@ const AddPurchase = () => {
                 <>
                   <FormControl fullWidth required>
                     <InputLabel>Unit Type (Category)</InputLabel>
-                    <Select value={selectedUnitType} onChange={(e) => setSelectedUnitType(e.target.value)}>
+                    <Select value={selectedUnitType} onChange={handleUnitTypeChange}>
                       {unitTypes.map((unit) => (
                         <MenuItem key={unit.id} value={unit.type}>
                           {unit.type}
