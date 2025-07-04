@@ -43,18 +43,28 @@ const EditSale = () => {
         const saleResponse = await axiosInstance.get(`/sales/${id}`);
         const sale = saleResponse.data;
 
-        const productNameVariety = `${sale.product_name} - ${sale.variety}`;
-        setProductDetails(productNameVariety);
+        // Find the product that matches the sale data (including brand if present)
+        const product = productsResponse.data.find(
+          (product) =>
+            product.product_name === sale.product_name &&
+            (product.variety || '') === (sale.variety || '') &&
+            (product.brand || '') === (sale.brand || '')
+        );
+
+        // Format product details for display
+        let productDetailsDisplay = sale.product_name;
+        if (sale.variety) {
+          productDetailsDisplay += ` - ${sale.variety}`;
+        }
+        if (sale.brand) {
+          productDetailsDisplay += ` (${sale.brand})`;
+        }
+        
+        setProductDetails(productDetailsDisplay);
         setRetailPrice(sale.retail_price);
         setQuantity(sale.quantity);
         setSaleDate(sale.sale_date.split('T')[0]);
         setSelectedUnitId(sale.unit_id);
-
-        const product = productsResponse.data.find(
-          (product) =>
-            product.product_name === sale.product_name &&
-            product.variety === sale.variety
-        );
 
         if (product) {
           const unitsResponse = await axiosInstance.get(
@@ -86,10 +96,36 @@ const EditSale = () => {
     const newProductDetails = e.target.value;
     setProductDetails(newProductDetails);
 
-    const [productName, variety] = newProductDetails.split(' - ');
-    const product = products.find(
-      (product) =>
-        product.product_name === productName && product.variety === variety
+    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
+    let productName, variety, brand;
+    
+    if (newProductDetails.includes('(') && newProductDetails.includes(')')) {
+      // Has brand
+      const brandMatch = newProductDetails.match(/\(([^)]+)\)$/);
+      brand = brandMatch ? brandMatch[1] : '';
+      const withoutBrand = newProductDetails.replace(/\s*\([^)]+\)$/, '');
+      
+      if (withoutBrand.includes(' - ')) {
+        [productName, variety] = withoutBrand.split(' - ');
+      } else {
+        productName = withoutBrand;
+        variety = '';
+      }
+    } else if (newProductDetails.includes(' - ')) {
+      // Has variety but no brand
+      [productName, variety] = newProductDetails.split(' - ');
+      brand = '';
+    } else {
+      // Just product name
+      productName = newProductDetails;
+      variety = '';
+      brand = '';
+    }
+
+    const product = products.find(product => 
+      product.product_name === productName && 
+      (product.variety || '') === variety &&
+      (product.brand || '') === brand
     );
 
     if (product) {
@@ -110,10 +146,46 @@ const EditSale = () => {
     }
   };
 
+  // Helper function to format product display
+  const formatProductDisplay = (product) => {
+    let display = product.product_name;
+    if (product.variety) {
+      display += ` - ${product.variety}`;
+    }
+    if (product.brand) {
+      display += ` (${product.brand})`;
+    }
+    return display;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const [productName, variety] = productDetails.split(' - ');
+    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
+    let productName, variety, brand;
+    
+    if (productDetails.includes('(') && productDetails.includes(')')) {
+      // Has brand
+      const brandMatch = productDetails.match(/\(([^)]+)\)$/);
+      brand = brandMatch ? brandMatch[1] : '';
+      const withoutBrand = productDetails.replace(/\s*\([^)]+\)$/, '');
+      
+      if (withoutBrand.includes(' - ')) {
+        [productName, variety] = withoutBrand.split(' - ');
+      } else {
+        productName = withoutBrand;
+        variety = '';
+      }
+    } else if (productDetails.includes(' - ')) {
+      // Has variety but no brand
+      [productName, variety] = productDetails.split(' - ');
+      brand = '';
+    } else {
+      // Just product name
+      productName = productDetails;
+      variety = '';
+      brand = '';
+    }
 
     const selectedUnit = unitTypes.find(
       (unit) => unit.unit_id === selectedUnitId
@@ -129,7 +201,8 @@ const EditSale = () => {
     try {
       await axiosInstance.put(`/sales/${id}`, {
         product_name: productName,
-        variety: variety,
+        variety: variety || '', // Ensure variety is never undefined
+        brand: brand || '', // Include brand information
         retail_price: retailPrice,
         quantity: quantity,
         sale_date: saleDate,
@@ -187,9 +260,9 @@ const EditSale = () => {
                       {products.map((product) => (
                         <MenuItem
                           key={product.product_id}
-                          value={`${product.product_name} - ${product.variety}`}
+                          value={formatProductDisplay(product)}
                         >
-                          {`${product.product_name} - ${product.variety}`}
+                          {formatProductDisplay(product)}
                         </MenuItem>
                       ))}
                     </Select>

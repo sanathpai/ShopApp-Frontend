@@ -63,7 +63,7 @@ const CustomerTransaction = () => {
     updatedItems[index] = {
       ...updatedItems[index],
       product: productId,
-      productName: `${selectedProduct?.product_name} - ${selectedProduct?.variety}`,
+      productName: selectedProduct ? formatProductDisplay(selectedProduct) : '',
       price: selectedProduct?.price || '',
       unitId: '',
       unitTypes: [],
@@ -154,9 +154,36 @@ const CustomerTransaction = () => {
   const handleLogSales = async () => {
     try {
       for (const item of items) {
+        // Parse the product name format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
+        let productName, variety, brand;
+        
+        if (item.productName.includes('(') && item.productName.includes(')')) {
+          // Has brand
+          const brandMatch = item.productName.match(/\(([^)]+)\)$/);
+          brand = brandMatch ? brandMatch[1] : '';
+          const withoutBrand = item.productName.replace(/\s*\([^)]+\)$/, '');
+          
+          if (withoutBrand.includes(' - ')) {
+            [productName, variety] = withoutBrand.split(' - ');
+          } else {
+            productName = withoutBrand;
+            variety = '';
+          }
+        } else if (item.productName.includes(' - ')) {
+          // Has variety but no brand
+          [productName, variety] = item.productName.split(' - ');
+          brand = '';
+        } else {
+          // Just product name
+          productName = item.productName;
+          variety = '';
+          brand = '';
+        }
+
         await axiosInstance.post('/sales', {
-          product_name: item.productName.split(' - ')[0],
-          variety: item.productName.split(' - ')[1],
+          product_name: productName,
+          variety: variety || '',
+          brand: brand || '',
           retail_price: item.price,
           quantity: item.quantity,
           sale_date: item.date,
@@ -171,6 +198,18 @@ const CustomerTransaction = () => {
       console.error('Error logging sales:', error);
       alert('Error logging sales.');
     }
+  };
+
+  // Helper function to format product display
+  const formatProductDisplay = (product) => {
+    let display = product.product_name;
+    if (product.variety) {
+      display += ` - ${product.variety}`;
+    }
+    if (product.brand) {
+      display += ` (${product.brand})`;
+    }
+    return display;
   };
 
   const printTable = () => {
@@ -191,7 +230,7 @@ const CustomerTransaction = () => {
                 <Select value={item.product} onChange={(e) => handleProductChange(index, e.target.value)}>
                   {products.map((product) => (
                     <MenuItem key={product.product_id} value={product.product_id}>
-                      {`${product.product_name} - ${product.variety}`}
+                      {formatProductDisplay(product)}
                     </MenuItem>
                   ))}
                 </Select>

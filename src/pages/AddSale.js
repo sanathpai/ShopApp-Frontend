@@ -52,8 +52,37 @@ const AddSale = () => {
     setSelectedUnitId('');
     setRetailPrice('');
     
-    const [productName, variety] = e.target.value.split(' - ');
-    const product = products.find(product => product.product_name === productName && product.variety === variety);
+    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
+    let productName, variety, brand;
+    
+    if (e.target.value.includes('(') && e.target.value.includes(')')) {
+      // Has brand
+      const brandMatch = e.target.value.match(/\(([^)]+)\)$/);
+      brand = brandMatch ? brandMatch[1] : '';
+      const withoutBrand = e.target.value.replace(/\s*\([^)]+\)$/, '');
+      
+      if (withoutBrand.includes(' - ')) {
+        [productName, variety] = withoutBrand.split(' - ');
+      } else {
+        productName = withoutBrand;
+        variety = '';
+      }
+    } else if (e.target.value.includes(' - ')) {
+      // Has variety but no brand
+      [productName, variety] = e.target.value.split(' - ');
+      brand = '';
+    } else {
+      // Just product name
+      productName = e.target.value;
+      variety = '';
+      brand = '';
+    }
+
+    const product = products.find(product => 
+      product.product_name === productName && 
+      (product.variety || '') === variety &&
+      (product.brand || '') === brand
+    );
     setCurrentProduct(product);
 
     if (product) {
@@ -71,6 +100,18 @@ const AddSale = () => {
         console.error('Error fetching units:', error);
       }
     }
+  };
+
+  // Helper function to format product display
+  const formatProductDisplay = (product) => {
+    let display = product.product_name;
+    if (product.variety) {
+      display += ` - ${product.variety}`;
+    }
+    if (product.brand) {
+      display += ` (${product.brand})`;
+    }
+    return display;
   };
 
   // New function to handle unit selection and fetch price suggestions
@@ -106,15 +147,49 @@ const AddSale = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const [productName, variety] = productDetails.split(' - ');
+    
+    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
+    let productName, variety, brand;
+    
+    if (productDetails.includes('(') && productDetails.includes(')')) {
+      // Has brand
+      const brandMatch = productDetails.match(/\(([^)]+)\)$/);
+      brand = brandMatch ? brandMatch[1] : '';
+      const withoutBrand = productDetails.replace(/\s*\([^)]+\)$/, '');
+      
+      if (withoutBrand.includes(' - ')) {
+        [productName, variety] = withoutBrand.split(' - ');
+      } else {
+        productName = withoutBrand;
+        variety = '';
+      }
+    } else if (productDetails.includes(' - ')) {
+      // Has variety but no brand
+      [productName, variety] = productDetails.split(' - ');
+      brand = '';
+    } else {
+      // Just product name
+      productName = productDetails;
+      variety = '';
+      brand = '';
+    }
 
     // Find the selected unit details
     const selectedUnit = unitTypes.find(unit => unit.unit_id === selectedUnitId);
 
     try {
+      // Validate that a unit is selected
+      if (!selectedUnit) {
+        setSnackbarMessage('Please select a unit type');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        return;
+      }
+
       await axiosInstance.post('/sales', {
         product_name: productName,
-        variety: variety,
+        variety: variety || '', // Ensure variety is never undefined
+        brand: brand || '', // Include brand information
         retail_price: retailPrice,
         quantity: quantity,
         sale_date: saleDate,
@@ -171,8 +246,8 @@ const AddSale = () => {
                 <InputLabel>Select the product sold</InputLabel>
                 <Select value={productDetails} onChange={handleProductChange}>
                   {products.map((product) => (
-                    <MenuItem key={product.product_id} value={`${product.product_name} - ${product.variety}`}>
-                      {`${product.product_name} - ${product.variety}`}
+                    <MenuItem key={product.product_id} value={formatProductDisplay(product)}>
+                      {formatProductDisplay(product)}
                     </MenuItem>
                   ))}
                 </Select>

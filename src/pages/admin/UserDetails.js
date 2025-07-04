@@ -129,6 +129,7 @@ const UserDetails = () => {
                 <TableCell>Product Name</TableCell>
                 <TableCell>Category</TableCell>
                 <TableCell>Variety</TableCell>
+                <TableCell>Brand</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -137,11 +138,12 @@ const UserDetails = () => {
                   <TableCell>{product.product_name}</TableCell>
                   <TableCell>{product.category}</TableCell>
                   <TableCell>{product.variety}</TableCell>
+                  <TableCell>{product.brand || 'No brand'}</TableCell>
                 </TableRow>
               ))}
               {products.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} align="center">No products data available</TableCell>
+                  <TableCell colSpan={4} align="center">No products data available</TableCell>
                 </TableRow>
               )}
             </TableBody>

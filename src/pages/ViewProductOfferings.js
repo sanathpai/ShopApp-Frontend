@@ -101,7 +101,11 @@ const ViewProductOfferings = () => {
             {offerings.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((offering) => (
               <TableRow key={offering.offering_id}>
                 <TableCell>{offering.shop_name}</TableCell>
-                <TableCell>{`${offering.product_name} - ${offering.variety}`}</TableCell> {/* Updated line */}
+                <TableCell>
+                  {offering.product_name}
+                  {offering.variety && ` - ${offering.variety}`}
+                  {offering.brand && ` (${offering.brand})`}
+                </TableCell>
                 <TableCell>{offering.unit_size}</TableCell>
                 <TableCell>{offering.buying_unit_type}</TableCell>
                 <TableCell>{offering.selling_unit_type}</TableCell>

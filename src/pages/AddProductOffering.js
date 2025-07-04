@@ -38,8 +38,38 @@ const AddProductOffering = () => {
     const productDetails = event.target.value;
     setProductDetails(productDetails);
 
-    const [productName, variety] = productDetails.split(' - ');
-    const product = products.find((product) => product.product_name === productName && product.variety === variety);
+    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
+    let productName, variety, brand;
+    
+    if (productDetails.includes('(') && productDetails.includes(')')) {
+      // Has brand
+      const brandMatch = productDetails.match(/\(([^)]+)\)$/);
+      brand = brandMatch ? brandMatch[1] : '';
+      const withoutBrand = productDetails.replace(/\s*\([^)]+\)$/, '');
+      
+      if (withoutBrand.includes(' - ')) {
+        [productName, variety] = withoutBrand.split(' - ');
+      } else {
+        productName = withoutBrand;
+        variety = '';
+      }
+    } else if (productDetails.includes(' - ')) {
+      // Has variety but no brand
+      [productName, variety] = productDetails.split(' - ');
+      brand = '';
+    } else {
+      // Just product name
+      productName = productDetails;
+      variety = '';
+      brand = '';
+    }
+
+    const product = products.find((product) => 
+      product.product_name === productName && 
+      (product.variety || '') === variety &&
+      (product.brand || '') === brand
+    );
+    
     if (product) {
       try {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
@@ -61,12 +91,39 @@ const AddProductOffering = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const [productName, variety] = productDetails.split(' - ');
+    
+    // Parse the product details to get individual fields
+    let productName, variety, brand;
+    
+    if (productDetails.includes('(') && productDetails.includes(')')) {
+      // Has brand
+      const brandMatch = productDetails.match(/\(([^)]+)\)$/);
+      brand = brandMatch ? brandMatch[1] : '';
+      const withoutBrand = productDetails.replace(/\s*\([^)]+\)$/, '');
+      
+      if (withoutBrand.includes(' - ')) {
+        [productName, variety] = withoutBrand.split(' - ');
+      } else {
+        productName = withoutBrand;
+        variety = '';
+      }
+    } else if (productDetails.includes(' - ')) {
+      // Has variety but no brand
+      [productName, variety] = productDetails.split(' - ');
+      brand = '';
+    } else {
+      // Just product name
+      productName = productDetails;
+      variety = '';
+      brand = '';
+    }
+
     try {
       const response = await axiosInstance.post('/productOfferings', {
         shop_name: shopName,
         product_name: productName,
-        variety: variety,
+        variety: variety || null,
+        brand: brand || null,
         unit_id: unitId,
         price: price,
       });
@@ -84,6 +141,18 @@ const AddProductOffering = () => {
   const handleSnackbarClose = () => {
     setSuccessMessage('');
     setErrorMessage('');
+  };
+
+  // Helper function to format product display
+  const formatProductDisplay = (product) => {
+    let display = product.product_name;
+    if (product.variety) {
+      display += ` - ${product.variety}`;
+    }
+    if (product.brand) {
+      display += ` (${product.brand})`;
+    }
+    return display;
   };
 
   return (
@@ -109,8 +178,8 @@ const AddProductOffering = () => {
                 <InputLabel>Product Name</InputLabel>
                 <Select value={productDetails} onChange={handleProductChange}>
                   {products.map((product) => (
-                    <MenuItem key={product.product_id} value={`${product.product_name} - ${product.variety}`}>
-                      {`${product.product_name} - ${product.variety}`}
+                    <MenuItem key={product.product_id} value={formatProductDisplay(product)}>
+                      {formatProductDisplay(product)}
                     </MenuItem>
                   ))}
                 </Select>

@@ -163,7 +163,13 @@ const ViewProducts = () => {
                 <Typography variant="h6">
                   {product.product_name}
                   {product.variety && ` - ${product.variety}`}
+                  {product.brand && ` (${product.brand})`}
                 </Typography>
+                {product.category && (
+                  <Typography variant="body2" color="text.secondary">
+                    Category: {product.category}
+                  </Typography>
+                )}
               </CardContent>
               <CardActions>
                 <Button variant="contained" color="primary" onClick={() => handleEdit(product)}>
@@ -213,6 +219,11 @@ const ViewProducts = () => {
               {currentProduct.variety && (
                 <DialogContentText>
                   <strong>Variety:</strong> {currentProduct.variety}
+                </DialogContentText>
+              )}
+              {currentProduct.brand && (
+                <DialogContentText>
+                  <strong>Brand:</strong> {currentProduct.brand}
                 </DialogContentText>
               )}
               <DialogContentText>

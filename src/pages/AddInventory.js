@@ -83,14 +83,40 @@ const AddInventory = () => {
       return;
     }
 
+    // Validate numeric fields
+    if (isNaN(parseFloat(currentStock)) || parseFloat(currentStock) <= 0) {
+      setSnackbarMessage('Current stock must be a valid positive number');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (isNaN(parseFloat(stockLimit)) || parseFloat(stockLimit) < 0) {
+      setSnackbarMessage('Stock limit must be a valid number');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (isNaN(parseInt(unitId))) {
+      setSnackbarMessage('Please select a valid unit');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
     try {
-      await axiosInstance.post('/inventories', {
+      const inventoryData = {
         product_name: productInfo.name,
-        variety: productInfo.variety,
-        current_stock: currentStock,
-        stock_limit: stockLimit,
-        unit_id: unitId 
-      });
+        variety: productInfo.variety || '',
+        current_stock: parseFloat(currentStock),
+        stock_limit: parseFloat(stockLimit),
+        unit_id: parseInt(unitId)
+      };
+      
+      console.log('Sending inventory data:', inventoryData);
+      
+      await axiosInstance.post('/inventories', inventoryData);
       
       setSnackbarMessage('Current stock entered successfully');
       setSnackbarSeverity('success');
@@ -103,7 +129,11 @@ const AddInventory = () => {
       
     } catch (error) {
       console.error('Error adding inventory:', error);
-      setSnackbarMessage('Error entering current stock');
+      
+      // Get specific error message from backend
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Error entering current stock';
+      
+      setSnackbarMessage(errorMessage);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }

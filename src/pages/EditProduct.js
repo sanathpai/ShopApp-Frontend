@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, TextField, Button, Box, Typography, Grid, Snackbar, Alert, Card, CardContent, CardActions } from '@mui/material';
+import { Container, TextField, Button, Box, Typography, Grid, Snackbar, Alert, Card, CardContent, CardActions, Chip, Stack } from '@mui/material';
 import axiosInstance from '../AxiosInstance'; 
 
 const EditProduct = () => {
@@ -10,11 +10,29 @@ const EditProduct = () => {
   const [productName, setProductName] = useState('');
   const [category, setCategory] = useState('');
   const [variety, setVariety] = useState('');
+  const [brand, setBrand] = useState('');
   const [description, setDescription] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [brandSuggestions, setBrandSuggestions] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
+
+  // Fetch brand suggestions when product name changes
+  useEffect(() => {
+    if (productName.length > 1 && isOnline) {
+      axiosInstance.get(`/products/brands/${encodeURIComponent(productName)}`)
+        .then(response => {
+          setBrandSuggestions(response.data.brands || []);
+        })
+        .catch(error => {
+          console.error('Error fetching brand suggestions:', error);
+          setBrandSuggestions([]);
+        });
+    } else {
+      setBrandSuggestions([]);
+    }
+  }, [productName, isOnline]);
 
   useEffect(() => {
     // Fetch the product details if the network is online
@@ -31,6 +49,7 @@ const EditProduct = () => {
         setProductName(product.product_name);
         setCategory(product.category);
         setVariety(product.variety);
+        setBrand(product.brand || '');
         setDescription(product.description);
       } catch (error) {
         console.error('Error fetching product:', error);
@@ -69,6 +88,10 @@ const EditProduct = () => {
     };
   }, [id, isOnline]);
 
+  const handleBrandSuggestionClick = (selectedBrand) => {
+    setBrand(selectedBrand);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -85,6 +108,7 @@ const EditProduct = () => {
         product_name: productName,
         category,
         variety,
+        brand: brand || null, // Send null if brand is empty
         description,
       });
       setSnackbarMessage('Product updated successfully.');
@@ -128,7 +152,7 @@ const EditProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Category (Optional)"
+                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
                     variant="outlined"
                     fullWidth
                     value={category}
@@ -137,7 +161,7 @@ const EditProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Variety (Optional)"
+                    label="Variety [Gala, Granny Smith etc] (Optional)"
                     variant="outlined"
                     fullWidth
                     value={variety}
@@ -146,19 +170,55 @@ const EditProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
+                    label="Brand (Optional)"
+                    variant="outlined"
+                    fullWidth
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    helperText="Leave blank if product doesn't have a brand (e.g., apples, onions)"
+                  />
+                  {brandSuggestions.length > 0 && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Existing brands for "{productName}":
+                      </Typography>
+                      <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
+                        {brandSuggestions.map((suggestion, index) => (
+                          <Chip
+                            key={index}
+                            label={suggestion}
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleBrandSuggestionClick(suggestion)}
+                            sx={{ mb: 0.5, cursor: 'pointer' }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
                     label="Description (Optional)"
                     variant="outlined"
                     fullWidth
                     multiline
-                    rows={4}
+                    rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    required
                   />
                 </Grid>
               </Grid>
-              <CardActions>
-                <Button type="submit" variant="contained" color="primary">
+              <CardActions sx={{ justifyContent: 'flex-end', mt: 2 }}>
+                <Button 
+                  type="button" 
+                  variant="outlined" 
+                  onClick={() => navigate('/dashboard/products/view')}
+                  sx={{ mr: 2 }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="contained" color="primary" size="large">
                   Update Product
                 </Button>
               </CardActions>
