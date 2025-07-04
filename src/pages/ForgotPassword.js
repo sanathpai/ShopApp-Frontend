@@ -31,7 +31,12 @@ const ForgotPassword = () => {
       console.error('here');
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to send password reset link. Please try again.');
+      // Extract the specific error message from the backend response
+      if (error.response && error.response.data && error.response.data.error) {
+        setError(error.response.data.error);
+      } else {
+        setError('Failed to send password reset link. Please try again.');
+      }
     }
   };
 
