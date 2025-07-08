@@ -152,24 +152,6 @@ const EditProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
-                    variant="outlined"
-                    fullWidth
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Variety [Gala, Granny Smith etc] (Optional)"
-                    variant="outlined"
-                    fullWidth
-                    value={variety}
-                    onChange={(e) => setVariety(e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
                     label="Brand (Optional)"
                     variant="outlined"
                     fullWidth
@@ -196,6 +178,24 @@ const EditProduct = () => {
                       </Stack>
                     </Box>
                   )}
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
+                    variant="outlined"
+                    fullWidth
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Variety [Gala, Granny Smith etc] (Optional)"
+                    variant="outlined"
+                    fullWidth
+                    value={variety}
+                    onChange={(e) => setVariety(e.target.value)}
+                  />
                 </Grid>
                 <Grid item xs={12}>
                   <TextField

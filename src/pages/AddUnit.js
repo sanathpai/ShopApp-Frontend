@@ -30,8 +30,6 @@ const AddUnit = () => {
   const [product_id, setProductId] = useState('');
   const [buying_unit_type, setBuyingUnitType] = useState('');
   const [selling_unit_type, setSellingUnitType] = useState('');
-  const [prepackaged, setPrepackaged] = useState(false);
-  const [prepackaged_b, setPrepackagedB] = useState(false);
   const [products, setProducts] = useState([]);
   const [existingUnits, setExistingUnits] = useState([]);
   const [productUnitTypes, setProductUnitTypes] = useState([]); // Store unit types for selected product only
@@ -187,8 +185,6 @@ const AddUnit = () => {
           buying_unit_type,
           selling_unit_type,
           conversion_rate: conversionRate,
-          prepackaged,
-          prepackaged_b,
           retail_price: retailPrice,
           order_price: orderPrice
         };
@@ -210,7 +206,6 @@ const AddUnit = () => {
           newUnitType,
           selectedExistingUnit,
           conversion_rate: conversionRate,
-          prepackaged,
           unitCategory,
           retail_price: retailPrice,
           order_price: orderPrice
@@ -247,7 +242,6 @@ const AddUnit = () => {
           newUnitType,
           selectedExistingUnit,
           conversion_rate: conversionRate,
-          prepackaged,
           unitCategory, // This is required for subsequent additions
           retail_price: retailPrice || '', // Always send these fields
           order_price: orderPrice || ''     // Always send these fields
@@ -259,8 +253,6 @@ const AddUnit = () => {
           buying_unit_type,
           selling_unit_type,
           conversion_rate: conversionRate,
-          prepackaged,
-          prepackaged_b,
           retail_price: retailPrice || '', // Always send retail_price for selling unit
           order_price: orderPrice || ''    // Always send order_price for buying unit
           // Note: Don't send unitCategory for first-time creation
@@ -305,8 +297,6 @@ const AddUnit = () => {
     setProductId('');
     setBuyingUnitType('');
     setSellingUnitType('');
-    setPrepackaged(false);
-    setPrepackagedB(false);
     setNewUnitType('');
     setSelectedExistingUnit('');
     setConversionRate('');
@@ -324,8 +314,6 @@ const AddUnit = () => {
     // Reset only the unit-related fields, keep the product_id
     setBuyingUnitType('');
     setSellingUnitType('');
-    setPrepackaged(false);
-    setPrepackagedB(false);
     setNewUnitType('');
     setSelectedExistingUnit('');
     setConversionRate('');
@@ -447,18 +435,6 @@ const AddUnit = () => {
                           />
                         </Grid>
                         <Grid item xs={12}>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={prepackaged_b}
-                                onChange={(e) => setPrepackagedB(e.target.checked)}
-                                color="primary"
-                              />
-                            }
-                            label="Prepackaged (Buying)"
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
                           <TextField
                             label="Current Order Price of Buying Unit"
                             variant="outlined"
@@ -493,18 +469,6 @@ const AddUnit = () => {
                                 required
                               />
                             )}
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={prepackaged}
-                                onChange={(e) => setPrepackaged(e.target.checked)}
-                                color="primary"
-                              />
-                            }
-                            label="Prepackaged (Selling)"
                           />
                         </Grid>
                         <Grid item xs={12}>
@@ -613,7 +577,7 @@ const AddUnit = () => {
                           </FormControl>
                         </Grid>
                         {/* Prepackaged Toggle for the New Unit */}
-                        <Grid item xs={12}>
+                        {/* <Grid item xs={12}>
                           <FormControlLabel
                             control={
                               <Switch
@@ -624,7 +588,7 @@ const AddUnit = () => {
                             }
                             label="Prepackaged (New Unit)"
                           />
-                        </Grid>
+                        </Grid> */}
                         <Grid item xs={12}>
                           <TextField
                             label={unitCategory === 'buying' ? "Current Order Price of New Unit" : "Current Retail Price of New Unit"}
