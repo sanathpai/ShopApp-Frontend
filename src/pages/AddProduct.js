@@ -16,6 +16,7 @@ const AddProduct = () => {
   const [brandSuggestions, setBrandSuggestions] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
   const justSelectedRef = useRef(false); // Track if we just selected a product
+  const blurTimeoutRef = useRef(null); // Track blur timeout
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,10 +89,20 @@ const AddProduct = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      // Clear any pending blur timeout
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
     };
   }, []);
 
   const handleSelectProduct = (product) => {
+    // Clear any pending blur timeout
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    
     justSelectedRef.current = true; // Set flag to prevent immediate search
     setProductName(product.product_name);
     setCategory(product.category);
@@ -99,6 +110,21 @@ const AddProduct = () => {
     setBrand(product.brand || '');
     setDescription(product.description);
     setSearchResults([]);
+  };
+
+  const handleProductNameBlur = () => {
+    // Clear search results after a small delay to allow clicking on results
+    blurTimeoutRef.current = setTimeout(() => {
+      setSearchResults([]);
+    }, 150);
+  };
+
+  const handleProductNameFocus = () => {
+    // Clear any pending blur timeout when field gets focus again
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
   };
 
   const handleBrandSuggestionClick = (selectedBrand) => {
@@ -165,6 +191,8 @@ const AddProduct = () => {
                     fullWidth
                     value={productName}
                     onChange={(e) => setProductName(e.target.value)}
+                    onBlur={handleProductNameBlur}
+                    onFocus={handleProductNameFocus}
                     required
                   />
                   <List>
@@ -177,24 +205,6 @@ const AddProduct = () => {
                       </ListItem>
                     ))}
                   </List>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
-                    variant="outlined"
-                    fullWidth
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Variety [Gala, Granny Smith etc] (Optional)"
-                    variant="outlined"
-                    fullWidth
-                    value={variety}
-                    onChange={(e) => setVariety(e.target.value)}
-                  />
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
@@ -224,6 +234,24 @@ const AddProduct = () => {
                       </Stack>
                     </Box>
                   )}
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
+                    variant="outlined"
+                    fullWidth
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Variety [Gala, Granny Smith etc] (Optional)"
+                    variant="outlined"
+                    fullWidth
+                    value={variety}
+                    onChange={(e) => setVariety(e.target.value)}
+                  />
                 </Grid>
                 <Grid item xs={12}>
                   <TextField

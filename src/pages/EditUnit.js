@@ -25,7 +25,6 @@ const EditUnit = () => {
   const [product_id, setProductId] = useState('');
   const [unit_type, setUnitType] = useState(''); // Changed variable name to be more general
   const [opposite_unit_id, setOppositeUnitId] = useState(''); // Store the selected opposite unit
-  const [prepackaged, setPrepackaged] = useState(false);
   const [products, setProducts] = useState([]);
   const [existingUnits, setExistingUnits] = useState([]); // For dropdown of existing units
   const [conversionRate, setConversionRate] = useState('');
@@ -55,7 +54,6 @@ const EditUnit = () => {
           setProductId(unit.product_id || '');
           setUnitType(unit.unit_type || '');
           setOppositeUnitId(unit.opposite_unit_id || ''); // Store the opposite unit ID
-          setPrepackaged(unit.prepackaged || false);
           setConversionRate(unit.conversion_factor || '');
         }
       } catch (error) {
@@ -93,7 +91,6 @@ const EditUnit = () => {
         unit_type,
         unit_category: 'buying', // Assuming 'buying' as default; adjust as needed
         opposite_unit_id, // Include opposite unit ID
-        prepackaged,
         conversion_rate: parseFloat(conversionRate)
       };
 
@@ -189,20 +186,6 @@ const EditUnit = () => {
                     value={conversionRate}
                     onChange={(e) => setConversionRate(e.target.value)}
                     required
-                  />
-                </Grid>
-
-                {/* Prepackaged */}
-                <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={prepackaged}
-                        onChange={(e) => setPrepackaged(e.target.checked)}
-                        color="primary"
-                      />
-                    }
-                    label="Prepackaged"
                   />
                 </Grid>
 

@@ -115,7 +115,7 @@ const ViewUnits = () => {
                 <Typography variant="body2">Unit Category: {unit.unit_category}</Typography>
                 <Typography variant="body2">Unit compared to: {unit.opposite_unit_type || 'N/A'}</Typography>
                 <Typography variant="body2">conversion factor between this unit and compared unit: {unit.conversion_rate ? unit.conversion_rate : 'N/A'}</Typography>
-                <Typography variant="body2">Prepackaged: {unit.prepackaged ? 'Yes' : 'No'}</Typography>
+                {/* <Typography variant="body2">Prepackaged: {unit.prepackaged ? 'Yes' : 'No'}</Typography> */}
               </CardContent>
               <CardActions>
                 <Button variant="contained" color="primary" onClick={() => handleEdit(unit)}>
@@ -157,7 +157,7 @@ const ViewUnits = () => {
               <Typography variant="body1">Unit Type: {selectedUnit.unit_type}</Typography>
               <Typography variant="body1">Unit Category: {selectedUnit.unit_category}</Typography>
               <Typography variant="body1">Opposite Unit: {selectedUnit.opposite_unit_type ? selectedUnit.opposite_unit_type : 'N/A'}</Typography>
-              <Typography variant="body1">Prepackaged: {selectedUnit.prepackaged ? 'Yes' : 'No'}</Typography>
+              {/* <Typography variant="body1">Prepackaged: {selectedUnit.prepackaged ? 'Yes' : 'No'}</Typography> */}
             </>
           )}
         </DialogContent>

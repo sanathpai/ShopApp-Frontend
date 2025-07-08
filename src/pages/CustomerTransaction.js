@@ -64,7 +64,7 @@ const CustomerTransaction = () => {
       ...updatedItems[index],
       product: productId,
       productName: selectedProduct ? formatProductDisplay(selectedProduct) : '',
-      price: selectedProduct?.price || '',
+      price: '',
       unitId: '',
       unitTypes: [],
       unitType: '',
@@ -90,6 +90,10 @@ const CustomerTransaction = () => {
     const updatedItems = [...items];
     updatedItems[index][field] = value;
 
+    if (field === 'unitId' && value && updatedItems[index].product) {
+      handleUnitChange(index, value);
+    }
+
     if (field === 'price' || field === 'quantity') {
       const price = parseFloat(updatedItems[index].price || 0);
       const quantity = parseFloat(updatedItems[index].quantity || 0);
@@ -99,6 +103,49 @@ const CustomerTransaction = () => {
 
     const totalSum = updatedItems.reduce((sum, item) => sum + item.total, 0);
     setGrandTotal(totalSum);
+  };
+
+  const handleUnitChange = async (index, unitId) => {
+    const updatedItems = [...items];
+    const currentItem = updatedItems[index];
+    
+    if (unitId && currentItem.product) {
+      try {
+        console.log(`🔍 Fetching retail price suggestions for product ${currentItem.product}, unit ${unitId}`);
+        const response = await axiosInstance.get(`/sales/price-suggestions/${currentItem.product}/${unitId}`);
+        
+        console.log('📊 Retail price suggestions response:', response.data);
+        console.log('💰 Suggested retail price:', response.data.suggested_retail_price);
+        console.log('🔢 Price type:', typeof response.data.suggested_retail_price);
+        console.log('✅ Is > 0?', response.data.suggested_retail_price > 0);
+        console.log('📜 Has price history?', response.data.has_price_history);
+        
+        // Populate price if there's any price history (even 0.00 can be useful)
+        if (response.data.has_price_history) {
+          console.log('✅ Has price history, setting retail price to:', response.data.suggested_retail_price.toString());
+          updatedItems[index].price = response.data.suggested_retail_price.toString();
+          
+          if (updatedItems[index].quantity) {
+            const price = parseFloat(updatedItems[index].price || 0);
+            const quantity = parseFloat(updatedItems[index].quantity || 0);
+            updatedItems[index].total = price * quantity;
+          }
+          
+          setItems(updatedItems);
+          
+          const totalSum = updatedItems.reduce((sum, item) => sum + item.total, 0);
+          setGrandTotal(totalSum);
+        } else {
+          console.log('❌ No price history found, clearing field');
+          updatedItems[index].price = '';
+          setItems(updatedItems);
+        }
+      } catch (error) {
+        console.error('Error fetching price suggestions:', error);
+        updatedItems[index].price = ''; // Clear if error
+        setItems(updatedItems);
+      }
+    }
   };
 
   const handleAddItem = () => {
