@@ -33,6 +33,7 @@ const AddUnit = () => {
   const [products, setProducts] = useState([]);
   const [existingUnits, setExistingUnits] = useState([]);
   const [productUnitTypes, setProductUnitTypes] = useState([]); // Store unit types for selected product only
+  const [searchUnitTypes, setSearchUnitTypes] = useState([]); // Store unit types from all users for search functionality
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -57,6 +58,32 @@ const AddUnit = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Function to fetch all unit types for a product from all users (for search functionality)
+  const fetchSearchUnitTypes = async (productName) => {
+    try {
+      console.log('🔍 FETCHING SEARCH UNIT TYPES for product:', productName);
+      console.log('🔍 Making API call to:', `/units/search/product/${encodeURIComponent(productName)}`);
+      
+      const response = await axiosInstance.get(`/units/search/product/${encodeURIComponent(productName)}`);
+      console.log('📡 Search units API response:', response.data);
+      
+      if (response.data.success) {
+        // Filter out any null, undefined, or empty values to prevent Autocomplete errors
+        const cleanUnitTypes = (response.data.unitTypes || [])
+          .filter(unitType => unitType && typeof unitType === 'string' && unitType.trim() !== '');
+        console.log('✅ SUCCESS: Setting searchUnitTypes to:', cleanUnitTypes);
+        setSearchUnitTypes(cleanUnitTypes);
+      } else {
+        console.log('❌ API returned success=false');
+        setSearchUnitTypes([]);
+      }
+    } catch (error) {
+      console.error('💥 Error fetching search unit types:', error);
+      console.error('💥 Error response:', error.response?.data);
+      setSearchUnitTypes([]);
+    }
+  };
+
   // Fetch products when the component loads
   useEffect(() => {
     const fetchProducts = async () => {
@@ -77,23 +104,38 @@ const AddUnit = () => {
     const productIdFromParams = queryParams.get('product_id');
     const fromProduct = queryParams.get('from_product') === 'true';
     
-    if (productIdFromParams) {
-      setProductId(productIdFromParams);
+    if (productIdFromParams && products.length > 0) {
+      // Validate that the product ID exists in the products list
+      const productExists = products.find(p => p.product_id.toString() === productIdFromParams);
+      if (productExists) {
+        setProductId(productIdFromParams);
+      } else {
+        console.warn('⚠️ Product ID from URL does not exist in products list:', productIdFromParams);
+      }
     }
     if (fromProduct) {
       setFromProductFlow(true);
     }
-  }, [location]);
+  }, [location, products]); // Add products as dependency
 
   // Fetch units based on the selected product
   useEffect(() => {
-    if (product_id) {
+    // Only proceed if we have a product_id and the products array is populated
+    if (product_id && products.length > 0) {
       const fetchUnits = async () => {
         try {
           // First get the selected product to find its product name
-          const selectedProduct = products.find(p => p.product_id === product_id);
+          // Convert product_id to number for comparison since database IDs are numbers
+          const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
+          console.log('🎯 SELECTED PRODUCT:', selectedProduct);
+          console.log('🔍 LOOKING FOR PRODUCT_ID:', product_id, 'TYPE:', typeof product_id);
+          console.log('🔍 AVAILABLE PRODUCTS:', products.map(p => ({ id: p.product_id, type: typeof p.product_id, name: p.product_name })));
           
           if (selectedProduct) {
+            console.log('🔍 SEARCHING FOR UNITS with product name:', selectedProduct.product_name);
+            // Fetch search unit types from all users for this product (for autocomplete suggestions)
+            await fetchSearchUnitTypes(selectedProduct.product_name);
+            
             // Get all products with the same product name (all varieties)
             const sameProductVarieties = products.filter(p => p.product_name === selectedProduct.product_name);
             
@@ -108,7 +150,8 @@ const AddUnit = () => {
             const allUnitsForProduct = unitResponses.flatMap(response => response.data);
             
             // Set existing units (for the specific product_id - needed for the existing unit dropdown)
-            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === product_id);
+            // Convert product_id to number for comparison
+            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === parseInt(product_id));
             setExistingUnits(specificProductUnits);
             
             // Extract unique unit types for all varieties of this product
@@ -121,6 +164,12 @@ const AddUnit = () => {
             } else {
               setIsAddingNewUnit(false); // No existing units, show the full form for adding both buying and selling units
             }
+          } else {
+            console.warn('⚠️ Selected product not found in products array. Product ID:', product_id);
+            // Clear search unit types if product not found
+            setSearchUnitTypes([]);
+            setProductUnitTypes([]);
+            setExistingUnits([]);
           }
         } catch (error) {
           console.error('Error fetching units:', error);
@@ -128,8 +177,10 @@ const AddUnit = () => {
       };
       fetchUnits();
     } else {
-      // Clear unit types when no product is selected
+      // Clear unit types when no product is selected or products array is empty
       setProductUnitTypes([]);
+      setSearchUnitTypes([]);
+      setExistingUnits([]);
     }
   }, [product_id, products]);
 
@@ -142,6 +193,12 @@ const AddUnit = () => {
       setCalculatedProfitMargin(0);
     }
   }, [retailPrice, orderPrice, conversionRate]);
+
+  // Debug: Log when searchUnitTypes changes
+  useEffect(() => {
+    console.log('🎯 SEARCH UNIT TYPES UPDATED:', searchUnitTypes);
+    console.log('🎯 Length:', searchUnitTypes.length);
+  }, [searchUnitTypes]);
 
   // Function to calculate profit margin
   const calculateProfitMargin = (retailPriceValue, orderPriceValue, conversionRateValue) => {
@@ -164,7 +221,6 @@ const AddUnit = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    console.log("Conversion rate before submit:", conversionRate);
     
     // Validate required fields
     if ((!isAddingNewUnit && (!buying_unit_type || !selling_unit_type)) || !conversionRate) {
@@ -263,8 +319,6 @@ const AddUnit = () => {
         setFirstTimeSellingUnit(selling_unit_type);
       }
 
-      console.log("Unit data being sent:", unitData);
-
       // Send the data to the backend
       await axiosInstance.post('/units', unitData);
       
@@ -327,9 +381,12 @@ const AddUnit = () => {
     if (product_id) {
       const fetchUnits = async () => {
         try {
-          const selectedProduct = products.find(p => p.product_id === product_id);
+          const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
           
           if (selectedProduct) {
+            // Fetch search unit types from all users for this product (for autocomplete suggestions)
+            await fetchSearchUnitTypes(selectedProduct.product_name);
+            
             // Get all products with the same product name (all varieties)
             const sameProductVarieties = products.filter(p => p.product_name === selectedProduct.product_name);
             
@@ -344,7 +401,7 @@ const AddUnit = () => {
             const allUnitsForProduct = unitResponses.flatMap(response => response.data);
             
             // Set existing units (for the specific product_id - needed for the existing unit dropdown)
-            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === product_id);
+            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === parseInt(product_id));
             setExistingUnits(specificProductUnits);
             
             // Extract unique unit types for all varieties of this product
@@ -415,13 +472,16 @@ const AddUnit = () => {
                         <Grid item xs={12}>
                           <Autocomplete
                             freeSolo
-                            options={productUnitTypes}
+                            options={Array.isArray(searchUnitTypes) ? searchUnitTypes : []}
                             value={buying_unit_type}
                             onChange={(event, newValue) => {
                               setBuyingUnitType(newValue || '');
                             }}
                             onInputChange={(event, newInputValue) => {
                               setBuyingUnitType(newInputValue);
+                            }}
+                            onOpen={() => {
+                              console.log('Autocomplete onOpen: Buying Unit Type');
                             }}
                             renderInput={(params) => (
                               <TextField
@@ -430,6 +490,7 @@ const AddUnit = () => {
                                 variant="outlined"
                                 fullWidth
                                 required
+                                helperText="Search from all buying and selling units used by any user for this product"
                               />
                             )}
                           />
@@ -452,13 +513,16 @@ const AddUnit = () => {
                         <Grid item xs={12}>
                           <Autocomplete
                             freeSolo
-                            options={productUnitTypes}
+                            options={Array.isArray(searchUnitTypes) ? searchUnitTypes : []}
                             value={selling_unit_type}
                             onChange={(event, newValue) => {
                               setSellingUnitType(newValue || '');
                             }}
                             onInputChange={(event, newInputValue) => {
                               setSellingUnitType(newInputValue);
+                            }}
+                            onOpen={() => {
+                              console.log('Autocomplete onOpen: Selling Unit Type');
                             }}
                             renderInput={(params) => (
                               <TextField
@@ -467,6 +531,7 @@ const AddUnit = () => {
                                 variant="outlined"
                                 fullWidth
                                 required
+                                helperText="Search from all buying and selling units used by any user for this product"
                               />
                             )}
                           />
@@ -540,13 +605,16 @@ const AddUnit = () => {
                         <Grid item xs={12}>
                           <Autocomplete
                             freeSolo
-                            options={productUnitTypes}
+                            options={Array.isArray(searchUnitTypes) ? searchUnitTypes : []}
                             value={newUnitType}
                             onChange={(event, newValue) => {
                               setNewUnitType(newValue || '');
                             }}
                             onInputChange={(event, newInputValue) => {
                               setNewUnitType(newInputValue);
+                            }}
+                            onOpen={() => {
+                              console.log('Autocomplete onOpen: New Unit Type');
                             }}
                             renderInput={(params) => (
                               <TextField
@@ -555,6 +623,7 @@ const AddUnit = () => {
                                 variant="outlined"
                                 fullWidth
                                 required
+                                helperText="Search from all buying and selling units used by any user for this product"
                               />
                             )}
                           />
@@ -567,7 +636,6 @@ const AddUnit = () => {
                               row
                               value={unitCategory}
                               onChange={(e) => {
-                                console.log('Selected category:', e.target.value); // Debugging line to check what's being selected
                                 setUnitCategory(e.target.value);
                               }}
                             >
