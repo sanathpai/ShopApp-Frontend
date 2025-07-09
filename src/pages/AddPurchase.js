@@ -204,7 +204,8 @@ const AddPurchase = () => {
         return;
       }
 
-      await axiosInstance.post('/purchases', {
+      // DEBUG: Log all the data being sent to backend
+      const requestData = {
         product_name: productName,
         variety: variety || '', // Ensure variety is never undefined
         brand: brand || '', // Include brand information
@@ -215,7 +216,15 @@ const AddPurchase = () => {
         purchase_date: purchaseDate,
         unit_id: selectedUnit.id,
         unit_category: selectedUnit.unitCategory,
-      });
+      };
+
+      console.log('🔍 DEBUG - Request data being sent to backend:', JSON.stringify(requestData, null, 2));
+      console.log('🔍 DEBUG - Selected unit details:', selectedUnit);
+      console.log('🔍 DEBUG - Current product details:', currentProduct);
+      console.log('🔍 DEBUG - Product details string:', productDetails);
+
+      await axiosInstance.post('/purchases', requestData);
+      
       setSnackbarMessage('Purchase added successfully!');
       setSnackbarSeverity('success');
       setSelectedSource('');
@@ -228,8 +237,11 @@ const AddPurchase = () => {
       setIsProductSelected(false);
       setCurrentProduct(null);
     } catch (error) {
-      console.error('Error adding purchase:', error);
-      setSnackbarMessage('Error adding purchase');
+      console.error('❌ Error adding purchase:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      console.error('❌ Error stack:', error.stack);
+      setSnackbarMessage('Error adding purchase: ' + (error.response?.data?.error || error.message));
       setSnackbarSeverity('error');
     } finally {
       setSnackbarOpen(true);

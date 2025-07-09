@@ -200,9 +200,23 @@ const CustomerTransaction = () => {
 
   const handleLogSales = async () => {
     try {
-      for (const item of items) {
+      console.log('🚀 Starting sales logging process...');
+      console.log('📋 Items to process:', items);
+      
+      for (const [index, item] of items.entries()) {
+        console.log(`\n📦 Processing item ${index + 1}:`);
+        console.log('Raw item data:', item);
+        
+        // Validate required fields
+        if (!item.product || !item.unitId || !item.price || !item.quantity) {
+          console.error('❌ Missing required fields for item:', item);
+          throw new Error(`Item ${index + 1} is missing required fields. Please fill in all fields.`);
+        }
+        
         // Parse the product name format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
         let productName, variety, brand;
+        
+        console.log('🔍 Parsing product name:', item.productName);
         
         if (item.productName.includes('(') && item.productName.includes(')')) {
           // Has brand
@@ -226,8 +240,10 @@ const CustomerTransaction = () => {
           variety = '';
           brand = '';
         }
+        
+        console.log('✅ Parsed product info:', { productName, variety, brand });
 
-        await axiosInstance.post('/sales', {
+        const saleData = {
           product_name: productName,
           variety: variety || '',
           brand: brand || '',
@@ -236,14 +252,27 @@ const CustomerTransaction = () => {
           sale_date: item.date,
           unit_id: item.unitId,
           unit_category: item.unitTypes.find((u) => u.id === item.unitId)?.category,
-        });
+        };
+        
+        console.log('📤 Sending sale data to backend:', saleData);
+        
+        try {
+          const response = await axiosInstance.post('/sales', saleData);
+          console.log('✅ Sale successful for item', index + 1, ':', response.data);
+        } catch (saleError) {
+          console.error('❌ Failed to log sale for item', index + 1, ':', saleError);
+          console.error('❌ Error details:', saleError.response?.data || saleError.message);
+          throw new Error(`Failed to log sale for item ${index + 1}: ${saleError.response?.data?.error || saleError.message}`);
+        }
       }
+      
+      console.log('🎉 All sales logged successfully!');
       alert('Sales logged successfully!');
       handleReset();
       setOpenModal(false);
     } catch (error) {
-      console.error('Error logging sales:', error);
-      alert('Error logging sales.');
+      console.error('❌ Error logging sales:', error);
+      alert(`Error logging sales: ${error.message}`);
     }
   };
 
