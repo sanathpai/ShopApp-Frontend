@@ -219,6 +219,25 @@ const AddUnit = () => {
     return profitMargin;
   };
 
+  // Helper function to format product display with brand
+  const formatProductDisplay = (product) => {
+    let display = product.product_name;
+    
+    // Add brand in parentheses
+    if (product.brand) {
+      display += ` (${product.brand})`;
+    } else {
+      display += ` (No Brand)`;
+    }
+    
+    // Add variety with dash if it exists
+    if (product.variety) {
+      display += ` - ${product.variety}`;
+    }
+    
+    return display;
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     
@@ -457,7 +476,7 @@ const AddUnit = () => {
                   >
                     {products.map((product) => (
                       <MenuItem key={product.product_id} value={product.product_id}>
-                        {`${product.product_name} - ${product.variety}`}
+                        {formatProductDisplay(product)}
                       </MenuItem>
                     ))}
                   </TextField>

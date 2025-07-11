@@ -13,8 +13,10 @@ import {
   Alert,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  Link as MuiLink
 } from '@mui/material';
+import { Link } from 'react-router-dom';
 
 const AddSale = () => {
   const [products, setProducts] = useState([]);
@@ -30,6 +32,8 @@ const AddSale = () => {
   const [isProductSelected, setIsProductSelected] = useState(false); // To control visibility
   const [dateWarning, setDateWarning] = useState('');
   const [currentProduct, setCurrentProduct] = useState(null); // Store current product info
+  const [showInventoryLink, setShowInventoryLink] = useState(false); // Control showing inventory link
+  const [inventoryLinkData, setInventoryLinkData] = useState(null); // Store product data for inventory link
 
   // Fetch products when the component is mounted
   useEffect(() => {
@@ -51,6 +55,7 @@ const AddSale = () => {
     // Clear previous selections when product changes
     setSelectedUnitId('');
     setRetailPrice('');
+    setShowInventoryLink(false); // Reset inventory link visibility
     
     // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
     let productName, variety, brand;
@@ -102,35 +107,19 @@ const AddSale = () => {
     }
   };
 
-  // Helper function to format product display
-  const formatProductDisplay = (product) => {
-    let display = product.product_name;
-    if (product.variety) {
-      display += ` - ${product.variety}`;
-    }
-    if (product.brand) {
-      display += ` (${product.brand})`;
-    }
-    return display;
-  };
-
-  // New function to handle unit selection and fetch price suggestions
   const handleUnitChange = async (e) => {
-    setSelectedUnitId(e.target.value);
+    const unitId = e.target.value;
+    setSelectedUnitId(unitId);
     
-    if (e.target.value && currentProduct) {
+    if (unitId && currentProduct) {
       try {
-        console.log(`🔍 Fetching retail price suggestions for product ${currentProduct.product_id}, unit ${e.target.value}`);
-        // Fetch price suggestions for this product-unit combination
-        const response = await axiosInstance.get(`/sales/price-suggestions/${currentProduct.product_id}/${e.target.value}`);
+        console.log(`🔍 Fetching retail price suggestions for product ${currentProduct.product_id}, unit ${unitId}`);
+        const response = await axiosInstance.get(`/sales/price-suggestions/${currentProduct.product_id}/${unitId}`);
         
         console.log('📊 Retail price suggestions response:', response.data);
         console.log('💰 Suggested retail price:', response.data.suggested_retail_price);
-        console.log('🔢 Price type:', typeof response.data.suggested_retail_price);
-        console.log('✅ Is > 0?', response.data.suggested_retail_price > 0);
-        console.log('📜 Has price history?', response.data.has_price_history);
         
-        // Populate price if there's any price history (even 0.00 can be useful)
+        // Populate price if there's any price history
         if (response.data.has_price_history) {
           console.log('✅ Has price history, setting retail price to:', response.data.suggested_retail_price.toString());
           setRetailPrice(response.data.suggested_retail_price.toString());
@@ -147,6 +136,9 @@ const AddSale = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Reset inventory link visibility
+    setShowInventoryLink(false);
     
     // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
     let productName, variety, brand;
@@ -205,9 +197,29 @@ const AddSale = () => {
       setProductDetails('');
       setIsProductSelected(false); // Reset product selection
       setCurrentProduct(null);
+      setShowInventoryLink(false); // Reset inventory link visibility
     } catch (error) {
       console.error('Error adding sale:', error);
-      setSnackbarMessage('Sale Addition failed. Verify if you have enough stocks in inventory');
+      
+      // Check if the error is related to missing inventory
+      const errorMessage = error.response?.data?.error || error.message;
+      
+      if (errorMessage.includes('Inventory not found') || 
+          errorMessage.includes('add the item to inventory') || 
+          errorMessage.includes('not found for product')) {
+        
+        // Show inventory link for this product
+        setInventoryLinkData({
+          productId: currentProduct?.product_id,
+          productName: productName,
+          variety: variety || '',
+          brand: brand || ''
+        });
+        setShowInventoryLink(true);
+        setSnackbarMessage(`${errorMessage} Would you like to set the stock now?`);
+      } else {
+        setSnackbarMessage('Sale Addition failed. Verify if you have enough stocks in inventory');
+      }
       setSnackbarSeverity('error');
     } finally {
       setSnackbarOpen(true);
@@ -217,6 +229,7 @@ const AddSale = () => {
   const handleCloseSnackbar = () => {
     setSnackbarOpen(false);
   };
+
   const getSalePriceLabel = () => {
     const selectedUnit = unitTypes.find(unit => unit.unit_id === selectedUnitId);
     return selectedUnit
@@ -233,8 +246,27 @@ const AddSale = () => {
     }
   };
 
+  const generateInventoryLink = () => {
+    if (!inventoryLinkData) return '';
+    const encodedName = encodeURIComponent(inventoryLinkData.productName);
+    const encodedVariety = encodeURIComponent(inventoryLinkData.variety || '');
+    return `/dashboard/inventories/stock-entry?product_id=${inventoryLinkData.productId}&product_name=${encodedName}&variety=${encodedVariety}`;
+  };
+
+  // Helper function to format product display
+  const formatProductDisplay = (product) => {
+    let display = product.product_name;
+    if (product.variety) {
+      display += ` - ${product.variety}`;
+    }
+    if (product.brand) {
+      display += ` (${product.brand})`;
+    }
+    return display;
+  };
+
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ paddingY: 4 }}>
       <Card>
         <CardContent>
           <Typography variant="h4" gutterBottom>
@@ -253,18 +285,14 @@ const AddSale = () => {
                 </Select>
               </FormControl>
 
-              {/* Show other fields only after a product is selected */}
               {isProductSelected && (
                 <>
                   <FormControl fullWidth required>
                     <InputLabel>Unit Type (Category)</InputLabel>
-                    <Select
-                      value={selectedUnitId}
-                      onChange={handleUnitChange}
-                    >
+                    <Select value={selectedUnitId} onChange={handleUnitChange}>
                       {unitTypes.map((unit) => (
                         <MenuItem key={unit.unit_id} value={unit.unit_id}>
-                          {unit.unit_type} {/* Display both unit type and category */}
+                          {unit.unit_type}
                         </MenuItem>
                       ))}
                     </Select>
@@ -272,43 +300,44 @@ const AddSale = () => {
 
                   <TextField
                     label={getSalePriceLabel()}
-                    variant="outlined"
-                    fullWidth
+                    type="number"
                     value={retailPrice}
                     onChange={(e) => setRetailPrice(e.target.value)}
+                    fullWidth
                     required
-                    type="number"
                   />
+
                   <TextField
                     label="Quantity"
-                    variant="outlined"
-                    fullWidth
+                    type="number"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
+                    fullWidth
                     required
-                    type="number"
                   />
+
                   <TextField
                     label="Sale Date"
-                    variant="outlined"
-                    fullWidth
+                    type="date"
                     value={saleDate}
                     onChange={(e) => {
                       setSaleDate(e.target.value);
                       checkFutureDate(e.target.value);
                     }}
+                    fullWidth
                     required
-                    type="date"
                     InputLabelProps={{
                       shrink: true,
                     }}
                   />
+
                   {dateWarning && (
                     <Typography color="warning.main" variant="body2">
                       {dateWarning}
                     </Typography>
                   )}
-                  <Button type="submit" variant="contained" color="primary">
+
+                  <Button type="submit" variant="contained" color="primary" size="large">
                     Add Sale
                   </Button>
                 </>
@@ -317,9 +346,24 @@ const AddSale = () => {
           </form>
         </CardContent>
       </Card>
+
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
         <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
           {snackbarMessage}
+          {showInventoryLink && inventoryLinkData && (
+            <Box sx={{ mt: 1 }}>
+              <MuiLink
+                component={Link}
+                to={generateInventoryLink()}
+                variant="body2"
+                sx={{ textDecoration: 'underline', color: 'inherit' }}
+              >
+                Click here to set stock for {inventoryLinkData.productName}
+                {inventoryLinkData.variety && ` - ${inventoryLinkData.variety}`}
+                {inventoryLinkData.brand && ` (${inventoryLinkData.brand})`}
+              </MuiLink>
+            </Box>
+          )}
         </Alert>
       </Snackbar>
     </Container>

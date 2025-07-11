@@ -15,6 +15,7 @@ import {
   Button,
   Paper,
   Modal,
+  Divider,
 } from '@mui/material';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -36,6 +37,7 @@ const Overview = () => {
   const [convertedProfitsLastWeek, setConvertedProfitsLastWeek] = useState({});
   const [productColors, setProductColors] = useState({});
   const [productsBelowThreshold, setProductsBelowThreshold] = useState([]);
+  const [productsWithoutInventory, setProductsWithoutInventory] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
@@ -80,21 +82,37 @@ const Overview = () => {
       } catch (error) {
         console.error('Error fetching overview data:', error);
       }
-    };
+    }
 
     const fetchProductsBelowThreshold = async () => {
       try {
         const response = await axiosInstance.get('/overview/below-threshold');
         setProductsBelowThreshold(response.data.productsBelowThreshold);
-        setModalOpen(response.data.productsBelowThreshold.length > 0);
       } catch (error) {
         console.error('Error fetching products below threshold:', error);
       }
     };
 
+    const fetchProductsWithoutInventory = async () => {
+      try {
+        const response = await axiosInstance.get('/overview/without-inventory');
+        setProductsWithoutInventory(response.data.productsWithoutInventory);
+      } catch (error) {
+        console.error('Error fetching products without inventory:', error);
+      }
+    };
+
     fetchOverviewData();
     fetchProductsBelowThreshold();
+    fetchProductsWithoutInventory();
   }, []);
+
+  // Open modal if there are products below threshold OR products without inventory
+  useEffect(() => {
+    if (productsBelowThreshold.length > 0 || productsWithoutInventory.length > 0) {
+      setModalOpen(true);
+    }
+  }, [productsBelowThreshold, productsWithoutInventory]);
 
   const generateUniqueColors = (products) => {
     const colorMap = {};
@@ -146,36 +164,122 @@ const Overview = () => {
 
   const handleCloseModal = () => setModalOpen(false);
 
+  const formatProductDisplay = (product) => {
+    let display = product.productName;
+    if (product.variety) {
+      display += ` - ${product.variety}`;
+    }
+    if (product.brand) {
+      display += ` (${product.brand})`;
+    }
+    return display;
+  };
+
+  const generateAddInventoryLink = (product) => {
+    const encodedName = encodeURIComponent(product.productName);
+    const encodedVariety = encodeURIComponent(product.variety || '');
+    return `/dashboard/inventories/stock-entry?product_id=${product.productId}&product_name=${encodedName}&variety=${encodedVariety}`;
+  };
+
   return (
     <Box sx={{ padding: 2 }}>
-      {/* Modal for Products Below Threshold */}
+      {/* Modal for Products Below Threshold and Without Inventory */}
       <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Box sx={{ padding: 4, background: 'white', margin: 'auto', marginTop: '10%', width: '50%', borderRadius: 2 }}>
+        <Box sx={{ 
+          padding: 4, 
+          background: 'white', 
+          margin: 'auto', 
+          marginTop: '5%', 
+          width: '60%', 
+          maxWidth: '800px',
+          borderRadius: 2,
+          maxHeight: '80vh',
+          overflowY: 'auto'
+        }}>
           <Typography variant="h6" gutterBottom>
-            Products Below Threshold
+            Inventory Notifications
           </Typography>
-          {productsBelowThreshold.length > 0 ? (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Product Name</TableCell>
-                    <TableCell>Variety</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {productsBelowThreshold.map((product) => (
-                    <TableRow key={product.productId}>
-                      <TableCell>{product.productName}</TableCell>
-                      <TableCell>{product.variety}</TableCell>
+          
+          {/* Products Without Inventory Section */}
+          {productsWithoutInventory.length > 0 && (
+            <>
+              <Typography variant="h6" color="error" gutterBottom>
+                Products Without Initial Stock Set
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                The following products do not have their initial stocks set:
+              </Typography>
+              <TableContainer component={Paper} sx={{ marginBottom: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Product Name</TableCell>
+                      <TableCell>Variety</TableCell>
+                      <TableCell>Action</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Typography>No products below the threshold.</Typography>
+                  </TableHead>
+                  <TableBody>
+                    {productsWithoutInventory.map((product) => (
+                      <TableRow key={product.productId}>
+                        <TableCell>{formatProductDisplay(product)}</TableCell>
+                        <TableCell>{product.variety || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Button
+                            component={Link}
+                            to={generateAddInventoryLink(product)}
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            onClick={handleCloseModal}
+                          >
+                            Set Stock
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
           )}
+
+          {/* Divider if both sections exist */}
+          {productsWithoutInventory.length > 0 && productsBelowThreshold.length > 0 && (
+            <Divider sx={{ marginY: 2 }} />
+          )}
+
+          {/* Products Below Threshold Section */}
+          {productsBelowThreshold.length > 0 && (
+            <>
+              <Typography variant="h6" color="warning.main" gutterBottom>
+                Products Below Threshold
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Product Name</TableCell>
+                      <TableCell>Variety</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {productsBelowThreshold.map((product) => (
+                      <TableRow key={product.productId}>
+                        <TableCell>{product.productName}</TableCell>
+                        <TableCell>{product.variety || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+
+          {/* Show message if no issues */}
+          {productsWithoutInventory.length === 0 && productsBelowThreshold.length === 0 && (
+            <Typography>No inventory issues found.</Typography>
+          )}
+
           <Button variant="contained" onClick={handleCloseModal} sx={{ marginTop: 2 }}>
             Close
           </Button>
