@@ -19,10 +19,14 @@ import {
   TableHead,
   TableRow,
   IconButton,
+  Snackbar,
+  Alert,
+  Link as MuiLink,
 } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import ClearIcon from '@mui/icons-material/Clear';
 import CloseIcon from '@mui/icons-material/Close';
+import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../AxiosInstance';
 
 const CustomerTransaction = () => {
@@ -42,6 +46,12 @@ const CustomerTransaction = () => {
   ]);
   const [grandTotal, setGrandTotal] = useState(0);
   const [openModal, setOpenModal] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [showInventoryLink, setShowInventoryLink] = useState(false);
+  const [inventoryLinkData, setInventoryLinkData] = useState(null);
+  const navigate = useNavigate();
 
   // Fetch products
   useEffect(() => {
@@ -165,7 +175,7 @@ const CustomerTransaction = () => {
     ]);
   };
 
-  const handleReset = () => {
+  const handleReset = (preserveSnackbar = false) => {
     setItems([
       {
         product: '',
@@ -180,6 +190,11 @@ const CustomerTransaction = () => {
       },
     ]);
     setGrandTotal(0);
+    setShowInventoryLink(false);
+    setInventoryLinkData(null);
+    if (!preserveSnackbar) {
+      setSnackbarOpen(false);
+    }
   };
 
   const handleDeleteItem = (index) => {
@@ -198,10 +213,27 @@ const CustomerTransaction = () => {
     setOpenModal(true);
   };
 
+  const generateInventoryLink = (productId, productName, variety, linkType = 'setup') => {
+    if (linkType === 'reconcile') {
+      // Link to reconcile inventory page
+      return `/dashboard/inventories/view`;
+    } else {
+      // Link to set up new inventory (default)
+      const encodedName = encodeURIComponent(productName);
+      const encodedVariety = encodeURIComponent(variety || '');
+      return `/dashboard/inventories/stock-entry?product_id=${productId}&product_name=${encodedName}&variety=${encodedVariety}`;
+    }
+  };
+
   const handleLogSales = async () => {
     try {
       console.log('🚀 Starting sales logging process...');
       console.log('📋 Items to process:', items);
+      
+      // Reset states
+      setShowInventoryLink(false);
+      setInventoryLinkData(null);
+      setSnackbarOpen(false);
       
       for (const [index, item] of items.entries()) {
         console.log(`\n📦 Processing item ${index + 1}:`);
@@ -262,18 +294,70 @@ const CustomerTransaction = () => {
         } catch (saleError) {
           console.error('❌ Failed to log sale for item', index + 1, ':', saleError);
           console.error('❌ Error details:', saleError.response?.data || saleError.message);
-          throw new Error(`Failed to log sale for item ${index + 1}: ${saleError.response?.data?.error || saleError.message}`);
+          
+          // Check if the error is related to missing inventory or insufficient stock
+          const errorMessage = saleError.response?.data?.error || saleError.message;
+          
+          if (errorMessage.includes('Inventory not found') || 
+              errorMessage.includes('add the item to inventory') || 
+              errorMessage.includes('not found for product')) {
+            
+            // Show inventory setup link for missing inventory
+            setInventoryLinkData({
+              productId: item.product,
+              productName: productName,
+              variety: variety || '',
+              brand: brand || '',
+              linkType: 'setup' // For setting up new inventory
+            });
+            setShowInventoryLink(true);
+            setSnackbarMessage(`${errorMessage} for ${productName}${variety ? ` - ${variety}` : ''}${brand ? ` (${brand})` : ''}. Would you like to set up inventory now?`);
+            setSnackbarSeverity('error');
+            setSnackbarOpen(true);
+            setOpenModal(false);
+            return;
+          } else if (errorMessage.includes('Insufficient stock')) {
+            
+            // Show reconcile inventory link for insufficient stock
+            setInventoryLinkData({
+              productId: item.product,
+              productName: productName,
+              variety: variety || '',
+              brand: brand || '',
+              linkType: 'reconcile' // For reconciling existing inventory
+            });
+            setShowInventoryLink(true);
+            setSnackbarMessage(`${errorMessage} for ${productName}${variety ? ` - ${variety}` : ''}${brand ? ` (${brand})` : ''}. Would you like to reconcile inventory now?`);
+            setSnackbarSeverity('error');
+            setSnackbarOpen(true);
+            setOpenModal(false);
+            return;
+          } else {
+            // Show detailed error message including unit conversion info
+            const unitType = item.unitTypes.find((u) => u.id === item.unitId)?.type || 'Unknown Unit';
+            const detailedMessage = `Failed to log sale for item ${index + 1} (${productName} - ${item.quantity} ${unitType}): ${errorMessage}`;
+            throw new Error(detailedMessage);
+          }
         }
       }
       
       console.log('🎉 All sales logged successfully!');
-      alert('Sales logged successfully!');
-      handleReset();
       setOpenModal(false);
+      handleReset(true); // Preserve snackbar when resetting after success
+      setSnackbarMessage('Sales logged successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
     } catch (error) {
       console.error('❌ Error logging sales:', error);
-      alert(`Error logging sales: ${error.message}`);
+      setSnackbarMessage(`Error logging sales: ${error.message}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      setOpenModal(false);
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
   };
 
   // Helper function to format product display
@@ -297,6 +381,7 @@ const CustomerTransaction = () => {
       <Typography variant="h4" gutterBottom align="center">
         Customer Transaction
       </Typography>
+
       <Paper elevation={3} sx={{ padding: 3, borderRadius: 2 }}>
         {items.map((item, index) => (
           <Grid container spacing={2} key={index} alignItems="center">
@@ -444,6 +529,38 @@ const CustomerTransaction = () => {
           </Box>
         </Box>
       </Modal>
+
+      {/* Snackbar for notifications */}
+      <Snackbar 
+        open={snackbarOpen} 
+        autoHideDuration={6000} 
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+          {showInventoryLink && inventoryLinkData && (
+            <Box sx={{ mt: 1 }}>
+              <MuiLink
+                component={Link}
+                to={generateInventoryLink(
+                  inventoryLinkData.productId, 
+                  inventoryLinkData.productName, 
+                  inventoryLinkData.variety,
+                  inventoryLinkData.linkType
+                )}
+                variant="body2"
+                sx={{ textDecoration: 'underline', color: 'inherit', fontWeight: 'bold' }}
+              >
+                {inventoryLinkData.linkType === 'reconcile' 
+                  ? 'Click here to reconcile inventory'
+                  : `Click here to set stock for ${inventoryLinkData.productName}${inventoryLinkData.variety ? ` - ${inventoryLinkData.variety}` : ''}${inventoryLinkData.brand ? ` (${inventoryLinkData.brand})` : ''}`
+                }
+              </MuiLink>
+            </Box>
+          )}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

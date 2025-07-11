@@ -19,12 +19,14 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Link as MuiLink,
 } from '@mui/material';
+import { Link } from 'react-router-dom';
 
 const AddPurchase = () => {
   const [products, setProducts] = useState([]);
   const [unitTypes, setUnitTypes] = useState([]);
-  const [selectedSource, setSelectedSource] = useState('');
+  // const [selectedSource, setSelectedSource] = useState('');
   const [orderPrice, setOrderPrice] = useState('');
   const [quantity, setQuantity] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
@@ -33,18 +35,20 @@ const AddPurchase = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  const [suppliers, setSuppliers] = useState([]);
+  // const [suppliers, setSuppliers] = useState([]);
   const [isProductSelected, setIsProductSelected] = useState(false);
   const [dateWarning, setDateWarning] = useState('');
   const [currentProduct, setCurrentProduct] = useState(null);
   const [selectedUnitId, setSelectedUnitId] = useState('');
+  const [showInventoryLink, setShowInventoryLink] = useState(false);
+  const [inventoryLinkData, setInventoryLinkData] = useState(null);
 
   // Modal State for Adding a New Source
-  const [modalOpen, setModalOpen] = useState(false);
-  const [sourceType, setSourceType] = useState('supplier');
-  const [supplierName, setSupplierName] = useState('');
-  const [contactInfo, setContactInfo] = useState('');
-  const [location, setLocation] = useState('');
+  // const [modalOpen, setModalOpen] = useState(false);
+  // const [sourceType, setSourceType] = useState('supplier');
+  // const [supplierName, setSupplierName] = useState('');
+  // const [contactInfo, setContactInfo] = useState('');
+  // const [location, setLocation] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,8 +56,8 @@ const AddPurchase = () => {
         const productsResponse = await axiosInstance.get('/products');
         setProducts(productsResponse.data);
 
-        const suppliersResponse = await axiosInstance.get('/suppliers');
-        setSuppliers(suppliersResponse.data);
+        // const suppliersResponse = await axiosInstance.get('/suppliers');
+        // setSuppliers(suppliersResponse.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -68,6 +72,7 @@ const AddPurchase = () => {
     setSelectedUnitType('');
     setSelectedUnitId('');
     setOrderPrice('');
+    setShowInventoryLink(false);
     
     // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
     let productName, variety, brand;
@@ -107,14 +112,173 @@ const AddPurchase = () => {
         const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
         const units = unitsResponse.data;
         setUnitTypes(units.map(unit => ({
-          id: unit.unit_id,
           type: `${unit.unit_type} (${unit.unit_category})`,
-          unitCategory: unit.unit_category,
+          id: unit.unit_id,
+          unitCategory: unit.unit_category
         })));
       } catch (error) {
         console.error('Error fetching units:', error);
       }
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Reset inventory link visibility
+    setShowInventoryLink(false);
+
+    // const selectedSourceDetails = suppliers.find(
+    //   (supplier) => supplier.market_name === selectedSource || supplier.name === selectedSource
+    // );
+    
+    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
+    let productName, variety, brand;
+    
+    if (productDetails.includes('(') && productDetails.includes(')')) {
+      // Has brand
+      const brandMatch = productDetails.match(/\(([^)]+)\)$/);
+      brand = brandMatch ? brandMatch[1] : '';
+      const withoutBrand = productDetails.replace(/\s*\([^)]+\)$/, '');
+      
+      if (withoutBrand.includes(' - ')) {
+        [productName, variety] = withoutBrand.split(' - ');
+      } else {
+        productName = withoutBrand;
+        variety = '';
+      }
+    } else if (productDetails.includes(' - ')) {
+      // Has variety but no brand
+      [productName, variety] = productDetails.split(' - ');
+      brand = '';
+    } else {
+      // Just product name
+      productName = productDetails;
+      variety = '';
+      brand = '';
+    }
+    
+    const selectedUnit = unitTypes.find(unit => unit.type === selectedUnitType);
+
+    try {
+      // Validate that a unit is selected
+      if (!selectedUnit) {
+        setSnackbarMessage('Please select a unit type');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        return;
+      }
+
+      // DEBUG: Log all the data being sent to backend
+      const requestData = {
+        product_name: productName,
+        variety: variety || '', // Ensure variety is never undefined
+        brand: brand || '', // Include brand information
+        // supplier_name: selectedSourceDetails?.name || null,
+        // market_name: selectedSourceDetails?.market_name || null,
+        supplier_name: null,
+        market_name: null,
+        order_price: orderPrice,
+        quantity,
+        purchase_date: purchaseDate,
+        unit_id: selectedUnit.id,
+        unit_category: selectedUnit.unitCategory,
+      };
+
+      console.log('🔍 DEBUG - Request data being sent to backend:', JSON.stringify(requestData, null, 2));
+      console.log('🔍 DEBUG - Selected unit details:', selectedUnit);
+      console.log('🔍 DEBUG - Current product details:', currentProduct);
+      console.log('🔍 DEBUG - Product details string:', productDetails);
+
+      await axiosInstance.post('/purchases', requestData);
+      
+      setSnackbarMessage('Purchase added successfully!');
+      setSnackbarSeverity('success');
+      // setSelectedSource('');
+      setOrderPrice('');
+      setQuantity('');
+      setPurchaseDate(new Date().toISOString().split('T')[0]);
+      setSelectedUnitType('');
+      setSelectedUnitId('');
+      setProductDetails('');
+      setIsProductSelected(false);
+      setCurrentProduct(null);
+      setShowInventoryLink(false);
+    } catch (error) {
+      console.error('❌ Error adding purchase:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      console.error('❌ Error stack:', error.stack);
+      
+      // Check if the error is related to missing inventory
+      const errorMessage = error.response?.data?.error || error.message;
+      
+      if (errorMessage.includes('Inventory not found') || 
+          errorMessage.includes('add the item to inventory') || 
+          errorMessage.includes('not found for product')) {
+        
+        // Show inventory link for this product
+        setInventoryLinkData({
+          productId: currentProduct?.product_id,
+          productName: productName,
+          variety: variety || '',
+          brand: brand || ''
+        });
+        setShowInventoryLink(true);
+        setSnackbarMessage(`${errorMessage} Would you like to set the stock now?`);
+      } else {
+        setSnackbarMessage('Error adding purchase: ' + errorMessage);
+      }
+      setSnackbarSeverity('error');
+    }
+    setSnackbarOpen(true);
+  };
+
+  // const handleAddSource = async () => {
+  //   try {
+  //     await axiosInstance.post('/suppliers', {
+  //       source_type: sourceType,
+  //       supplier_name: sourceType === 'supplier' ? supplierName : '',
+  //       market_name: sourceType === 'market' ? supplierName : '',
+  //       contact_info: contactInfo,
+  //       location,
+  //     });
+  //     setSnackbarMessage('Source added successfully!');
+  //     setSnackbarSeverity('success');
+  //     setSupplierName('');
+  //     setContactInfo('');
+  //     setLocation('');
+  //     setModalOpen(false);
+
+  //     // Refresh suppliers list
+  //     const suppliersResponse = await axiosInstance.get('/suppliers');
+  //     setSuppliers(suppliersResponse.data);
+  //   } catch (error) {
+  //     setSnackbarMessage('Error adding source');
+  //     setSnackbarSeverity('error');
+  //   } finally {
+  //     setSnackbarOpen(true);
+  //   }
+  // };
+
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
+  };
+
+  const checkFutureDate = (date) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (date > today) {
+      setDateWarning('Warning: You are entering a future date for this purchase.');
+    } else {
+      setDateWarning('');
+    }
+  };
+
+  const generateInventoryLink = () => {
+    if (!inventoryLinkData) return '';
+    const encodedName = encodeURIComponent(inventoryLinkData.productName);
+    const encodedVariety = encodeURIComponent(inventoryLinkData.variety || '');
+    return `/dashboard/inventories/stock-entry?product_id=${inventoryLinkData.productId}&product_name=${encodedName}&variety=${encodedVariety}`;
   };
 
   // Helper function to format product display
@@ -161,135 +325,8 @@ const AddPurchase = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const selectedSourceDetails = suppliers.find(
-      (supplier) => supplier.market_name === selectedSource || supplier.name === selectedSource
-    );
-    
-    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
-    let productName, variety, brand;
-    
-    if (productDetails.includes('(') && productDetails.includes(')')) {
-      // Has brand
-      const brandMatch = productDetails.match(/\(([^)]+)\)$/);
-      brand = brandMatch ? brandMatch[1] : '';
-      const withoutBrand = productDetails.replace(/\s*\([^)]+\)$/, '');
-      
-      if (withoutBrand.includes(' - ')) {
-        [productName, variety] = withoutBrand.split(' - ');
-      } else {
-        productName = withoutBrand;
-        variety = '';
-      }
-    } else if (productDetails.includes(' - ')) {
-      // Has variety but no brand
-      [productName, variety] = productDetails.split(' - ');
-      brand = '';
-    } else {
-      // Just product name
-      productName = productDetails;
-      variety = '';
-      brand = '';
-    }
-    
-    const selectedUnit = unitTypes.find(unit => unit.type === selectedUnitType);
-
-    try {
-      // Validate that a unit is selected
-      if (!selectedUnit) {
-        setSnackbarMessage('Please select a unit type');
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
-        return;
-      }
-
-      // DEBUG: Log all the data being sent to backend
-      const requestData = {
-        product_name: productName,
-        variety: variety || '', // Ensure variety is never undefined
-        brand: brand || '', // Include brand information
-        supplier_name: selectedSourceDetails?.name || null,
-        market_name: selectedSourceDetails?.market_name || null,
-        order_price: orderPrice,
-        quantity,
-        purchase_date: purchaseDate,
-        unit_id: selectedUnit.id,
-        unit_category: selectedUnit.unitCategory,
-      };
-
-      console.log('🔍 DEBUG - Request data being sent to backend:', JSON.stringify(requestData, null, 2));
-      console.log('🔍 DEBUG - Selected unit details:', selectedUnit);
-      console.log('🔍 DEBUG - Current product details:', currentProduct);
-      console.log('🔍 DEBUG - Product details string:', productDetails);
-
-      await axiosInstance.post('/purchases', requestData);
-      
-      setSnackbarMessage('Purchase added successfully!');
-      setSnackbarSeverity('success');
-      setSelectedSource('');
-      setOrderPrice('');
-      setQuantity('');
-      setPurchaseDate(new Date().toISOString().split('T')[0]);
-      setSelectedUnitType('');
-      setSelectedUnitId('');
-      setProductDetails('');
-      setIsProductSelected(false);
-      setCurrentProduct(null);
-    } catch (error) {
-      console.error('❌ Error adding purchase:', error);
-      console.error('❌ Error response:', error.response?.data);
-      console.error('❌ Error status:', error.response?.status);
-      console.error('❌ Error stack:', error.stack);
-      setSnackbarMessage('Error adding purchase: ' + (error.response?.data?.error || error.message));
-      setSnackbarSeverity('error');
-    } finally {
-      setSnackbarOpen(true);
-    }
-  };
-
-  const handleAddSource = async () => {
-    try {
-      await axiosInstance.post('/suppliers', {
-        source_type: sourceType,
-        supplier_name: sourceType === 'supplier' ? supplierName : '',
-        market_name: sourceType === 'market' ? supplierName : '',
-        contact_info: contactInfo,
-        location,
-      });
-      setSnackbarMessage('Source added successfully!');
-      setSnackbarSeverity('success');
-      setSupplierName('');
-      setContactInfo('');
-      setLocation('');
-      setModalOpen(false);
-
-      // Refresh suppliers list
-      const suppliersResponse = await axiosInstance.get('/suppliers');
-      setSuppliers(suppliersResponse.data);
-    } catch (error) {
-      setSnackbarMessage('Error adding source');
-      setSnackbarSeverity('error');
-    } finally {
-      setSnackbarOpen(true);
-    }
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbarOpen(false);
-  };
-
-  const checkFutureDate = (date) => {
-    const today = new Date().toISOString().split('T')[0];
-    if (date > today) {
-      setDateWarning('Warning: You are entering a future date for this purchase.');
-    } else {
-      setDateWarning('');
-    }
-  };
-
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ paddingY: 4 }}>
       <Card>
         <CardContent>
           <Typography variant="h4" gutterBottom>
@@ -322,48 +359,44 @@ const AddPurchase = () => {
                   </FormControl>
 
                   {/* <FormControl fullWidth required>
-                    <InputLabel>Purchased From</InputLabel>
+                    <InputLabel>Select Source</InputLabel>
                     <Select value={selectedSource} onChange={(e) => setSelectedSource(e.target.value)}>
-                      {suppliers.map((supplier) => (
-                        <MenuItem key={supplier.market_name || supplier.name} value={supplier.market_name || supplier.name}>
+                      {suppliers.map((supplier, index) => (
+                        <MenuItem key={index} value={supplier.name || supplier.market_name}>
                           {supplier.name ? `Supplier - ${supplier.name}` : `Market - ${supplier.market_name}`}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl> */}
-                  {/* <Button onClick={() => setModalOpen(true)} color="secondary">
-                    Add Source
-                  </Button> */}
 
                   <TextField
-                    label={`Order Price (per ${selectedUnitType || 'unit'}) (K)`}
-                    variant="outlined"
-                    fullWidth
+                    label="Order Price"
+                    type="number"
                     value={orderPrice}
                     onChange={(e) => setOrderPrice(e.target.value)}
+                    fullWidth
                     required
-                    type="number"
                   />
+
                   <TextField
                     label="Quantity"
-                    variant="outlined"
-                    fullWidth
+                    type="number"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
+                    fullWidth
                     required
-                    type="number"
                   />
+
                   <TextField
                     label="Purchase Date"
-                    variant="outlined"
-                    fullWidth
+                    type="date"
                     value={purchaseDate}
                     onChange={(e) => {
                       setPurchaseDate(e.target.value);
                       checkFutureDate(e.target.value);
                     }}
+                    fullWidth
                     required
-                    type="date"
                     InputLabelProps={{
                       shrink: true,
                     }}
@@ -373,7 +406,7 @@ const AddPurchase = () => {
                       {dateWarning}
                     </Typography>
                   )}
-                  <Button type="submit" variant="contained" color="primary">
+                  <Button type="submit" variant="contained" color="primary" size="large">
                     Add Purchase
                   </Button>
                 </>
@@ -384,7 +417,7 @@ const AddPurchase = () => {
       </Card>
 
       {/* Add Source Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
+      {/* <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
         <Box
           sx={{
             position: 'absolute',
@@ -442,11 +475,25 @@ const AddPurchase = () => {
             Add Source
           </Button>
         </Box>
-      </Modal>
+      </Modal> */}
 
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
         <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
           {snackbarMessage}
+          {showInventoryLink && inventoryLinkData && (
+            <Box sx={{ mt: 1 }}>
+              <MuiLink
+                component={Link}
+                to={generateInventoryLink()}
+                variant="body2"
+                sx={{ textDecoration: 'underline', color: 'inherit' }}
+              >
+                Click here to set stock for {inventoryLinkData.productName}
+                {inventoryLinkData.variety && ` - ${inventoryLinkData.variety}`}
+                {inventoryLinkData.brand && ` (${inventoryLinkData.brand})`}
+              </MuiLink>
+            </Box>
+          )}
         </Alert>
       </Snackbar>
     </Container>
