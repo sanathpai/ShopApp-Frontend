@@ -359,19 +359,35 @@ const AddProduct = () => {
         return;
       }
       
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // Limit capture size to prevent large images
+      const maxCaptureSize = 1024;
+      const originalWidth = video.videoWidth;
+      const originalHeight = video.videoHeight;
       
-      // Draw video frame to canvas
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      let canvasWidth = originalWidth;
+      let canvasHeight = originalHeight;
       
-      // Convert to base64
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      // Scale down if too large
+      if (originalWidth > maxCaptureSize || originalHeight > maxCaptureSize) {
+        const scale = Math.min(maxCaptureSize / originalWidth, maxCaptureSize / originalHeight);
+        canvasWidth = Math.round(originalWidth * scale);
+        canvasHeight = Math.round(originalHeight * scale);
+      }
+      
+      // Set canvas dimensions
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      
+      // Draw video frame to canvas with scaling
+      context.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+      
+      // Convert to base64 with compression
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.7);
       setCapturedImage(imageDataUrl);
       setImagePreview(imageDataUrl);
       
       console.log('✅ Photo captured successfully');
+      console.log(`📸 Final image size: ${(imageDataUrl.length / (1024 * 1024)).toFixed(2)}MB`);
       
       // Clear any previous error
       setCameraError('');
@@ -407,22 +423,79 @@ const AddProduct = () => {
         return;
       }
       
-      // Validate file size (max 5MB)
+      // Validate file size (max 5MB original file size)
       if (file.size > 5 * 1024 * 1024) {
         setCameraError('Image file is too large. Please select a file smaller than 5MB.');
         return;
       }
       
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageDataUrl = e.target.result;
-        setCapturedImage(imageDataUrl);
-        setImagePreview(imageDataUrl);
-        setCameraError(''); // Clear any previous errors
-        console.log('✅ Image uploaded successfully');
-      };
-      reader.readAsDataURL(file);
+      // Compress and convert the image
+      compressAndConvertImage(file);
     }
+  };
+
+  // New function to compress images before upload
+  const compressAndConvertImage = (file) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calculate new dimensions (max 1024x1024)
+      const maxSize = 1024;
+      let { width, height } = img;
+      
+      if (width > height) {
+        if (width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        }
+      } else {
+        if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+      }
+      
+      // Set canvas size
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and compress
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convert to base64 with compression (quality 0.7 = 70%)
+      const compressedImageDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      
+      // Check final size (should be much smaller now)
+      const finalSizeMB = (compressedImageDataUrl.length / (1024 * 1024));
+      console.log(`📸 Compressed image size: ${finalSizeMB.toFixed(2)}MB`);
+      
+      if (finalSizeMB > 10) {
+        // If still too large, compress more
+        const veryCompressedImageDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        setCapturedImage(veryCompressedImageDataUrl);
+        setImagePreview(veryCompressedImageDataUrl);
+        console.log('⚠️ Used extra compression due to large size');
+      } else {
+        setCapturedImage(compressedImageDataUrl);
+        setImagePreview(compressedImageDataUrl);
+      }
+      
+      setCameraError(''); // Clear any previous errors
+      console.log('✅ Image compressed and uploaded successfully');
+    };
+    
+    img.onerror = () => {
+      setCameraError('Failed to process the selected image. Please try another image.');
+    };
+    
+    // Load the image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleCamera = () => {
@@ -467,10 +540,10 @@ const AddProduct = () => {
         console.log('📸 Image data type:', typeof capturedImage);
         console.log('📸 Image data preview (first 100 chars):', capturedImage.substring(0, 100));
         
-        // Check if image is too large (>16MB as base64)
-        if (capturedImage.length > 16 * 1024 * 1024) {
-          console.warn('⚠️ IMAGE WARNING - Image is very large:', (capturedImage.length / (1024 * 1024)).toFixed(2) + 'MB');
-          setSnackbarMessage('Image is too large. Please try a smaller image (max 16MB).');
+        // Reduced size limit for better reliability (10MB instead of 16MB)
+        if (capturedImage.length > 10 * 1024 * 1024) {
+          console.warn('⚠️ IMAGE WARNING - Image is large:', (capturedImage.length / (1024 * 1024)).toFixed(2) + 'MB');
+          setSnackbarMessage('Image is still too large after compression. Please try a smaller image or retake the photo.');
           setSnackbarSeverity('warning');
           setSnackbarOpen(true);
           return;
@@ -503,7 +576,22 @@ const AddProduct = () => {
     } catch (error) {
       console.error('❌ Product creation error:', error);
       console.error('❌ Error response:', error.response?.data);
-      setSnackbarMessage('Error adding product: ' + (error.response ? error.response.data.error : error.message));
+      
+      let errorMessage = 'Error adding product';
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 413) {
+        errorMessage = 'Image too large. Please try a smaller image.';
+      } else if (error.response?.status === 408 || error.code === 'ETIMEDOUT') {
+        errorMessage = 'Upload timed out. Please try a smaller image or check your connection.';
+      } else if (error.message.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else {
+        errorMessage = errorMessage + ': ' + (error.response?.data?.error || error.message);
+      }
+      
+      setSnackbarMessage(errorMessage);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
@@ -568,11 +656,11 @@ const AddProduct = () => {
                         mt: { xs: hasCamera ? 1 : 0, sm: 0 }
                       }}
                     >
-                      📁 Upload from Gallery
+                      📱 Take Photo
                       <input
                         type="file"
                         accept="image/*"
-                        capture="environment" // This enables camera on mobile browsers
+                        capture="environment"
                         onChange={handleFileUpload}
                         style={{ display: 'none' }}
                       />
@@ -580,7 +668,7 @@ const AddProduct = () => {
                     
                     {/* Mobile-specific tip */}
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: { xs: 'block', md: 'none' } }}>
-                      📱 "Upload from Gallery" can also open your camera on mobile devices
+                      📱 "Take Photo" opens your camera to capture a new photo
                     </Typography>
                     
                     {/* Desktop-specific tip when no camera */}
@@ -702,7 +790,7 @@ const AddProduct = () => {
                         startIcon={<PhotoCamera />}
                         sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
-                        📁 Choose Different Image
+                        📱 Take Different Photo
                         <input
                           type="file"
                           accept="image/*"
