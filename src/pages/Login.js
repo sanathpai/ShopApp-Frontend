@@ -54,7 +54,7 @@ const Login = () => {
     event.preventDefault();
     setError('');
     try {
-      const response = await axios.post('https://shoppeappnow.com/api/auth/login', { username, password });
+      const response = await axios.post('http://localhost:8000/api/auth/login', { username, password });
       const { token, role } = response.data; // Get token and role from response
       console.log(response);
       console.log(response.data);
