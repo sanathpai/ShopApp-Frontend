@@ -632,7 +632,7 @@ const AddProduct = () => {
                 {!capturedImage && !isCameraOpen && (
                   <Box sx={{ textAlign: 'center' }}>
                     {/* Camera Option - Always show unless confirmed no camera */}
-                    {hasCamera && (
+                    {/* {hasCamera && (
                       <Button
                         variant="contained"
                         startIcon={<PhotoCamera />}
@@ -642,7 +642,7 @@ const AddProduct = () => {
                       >
                         📱 Open Camera
                       </Button>
-                    )}
+                    )} */}
                     
                     {/* File Upload Option - Always available */}
                     <Button
