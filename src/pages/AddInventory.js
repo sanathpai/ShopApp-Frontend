@@ -188,19 +188,25 @@ const AddInventory = () => {
                 required
               />
 
+              <Typography 
+                variant="body2" 
+                color="text.secondary" 
+                sx={{ 
+                  fontSize: '0.75rem',
+                  marginBottom: 1,
+                  marginTop: 2 
+                }}
+              >
+                You will be warned that the stock of {getProductDisplayName()} is low if it falls below:
+              </Typography>
+
               <TextField
-                label={`You will be warned that the stock of ${getProductDisplayName()} is low if it falls below`}
+                label="Low Stock Threshold *"
                 type="number"
                 value={stockLimit}
                 onChange={(e) => setStockLimit(e.target.value)}
                 fullWidth
                 required
-                InputLabelProps={{
-                  style: {
-                    whiteSpace: 'normal',
-                    fontSize: '0.875rem',
-                  },
-                }}
               />
 
               <Button type="submit" variant="contained" color="primary">
