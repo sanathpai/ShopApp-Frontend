@@ -162,14 +162,9 @@ const ViewProducts = () => {
               <CardContent>
                 <Typography variant="h6">
                   {product.product_name}
-                  {product.variety && ` - ${product.variety}`}
                   {product.brand && ` (${product.brand})`}
+                  {(product.variety || product.size) && ` - ${[product.variety, product.size || product.description].filter(Boolean).join(', ')}`}
                 </Typography>
-                {product.category && (
-                  <Typography variant="body2" color="text.secondary">
-                    Category: {product.category}
-                  </Typography>
-                )}
               </CardContent>
               <CardActions>
                 <Button variant="contained" color="primary" onClick={() => handleEdit(product)}>
@@ -216,21 +211,14 @@ const ViewProducts = () => {
               <DialogContentText>
                 <strong>Product Name:</strong> {currentProduct.product_name}
               </DialogContentText>
-              {currentProduct.variety && (
-                <DialogContentText>
-                  <strong>Variety:</strong> {currentProduct.variety}
-                </DialogContentText>
-              )}
-              {currentProduct.brand && (
-                <DialogContentText>
-                  <strong>Brand:</strong> {currentProduct.brand}
-                </DialogContentText>
-              )}
               <DialogContentText>
-                <strong>Category:</strong> {currentProduct.category}
+                <strong>Brand:</strong> {currentProduct.brand || 'No brand'}
               </DialogContentText>
               <DialogContentText>
-                <strong>Description:</strong> {currentProduct.description}
+                <strong>Variety:</strong> {currentProduct.variety || 'No variety'}
+              </DialogContentText>
+              <DialogContentText>
+                <strong>Size:</strong> {currentProduct.size || currentProduct.description || 'No size specified'}
               </DialogContentText>
             </>
           )}

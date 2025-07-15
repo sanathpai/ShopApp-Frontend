@@ -6,10 +6,9 @@ import { useNavigate } from 'react-router-dom';
 
 const AddProduct = () => {
   const [productName, setProductName] = useState('');
-  const [category, setCategory] = useState('');
   const [variety, setVariety] = useState('');
   const [brand, setBrand] = useState('');
-  const [description, setDescription] = useState('');
+  const [size, setSize] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -145,10 +144,9 @@ const AddProduct = () => {
     
     justSelectedRef.current = true; // Set flag to prevent immediate search
     setProductName(product.product_name);
-    setCategory(product.category);
     setVariety(product.variety);
     setBrand(product.brand || '');
-    setDescription(product.description);
+    setSize(product.size || product.description || ''); // Handle both old and new field names
     setSearchResults([]);
   };
 
@@ -527,10 +525,9 @@ const AddProduct = () => {
     try {
       const productData = {
         product_name: productName,
-        category,
         variety,
         brand: brand || null, // Send null if brand is empty
-        description,
+        size,
       };
 
       // Include image data if captured
@@ -633,15 +630,15 @@ const AddProduct = () => {
                   <Box sx={{ textAlign: 'center' }}>
                     {/* Camera Option - Always show unless confirmed no camera */}
                     {/* {hasCamera && (
-                      <Button
-                        variant="contained"
-                        startIcon={<PhotoCamera />}
-                        onClick={startCamera}
-                        size="large"
-                        sx={{ mb: 2, mr: { xs: 0, sm: 1 }, width: { xs: '100%', sm: 'auto' } }}
-                      >
-                        📱 Open Camera
-                      </Button>
+                      // <Button
+                      //   variant="contained"
+                      //   startIcon={<PhotoCamera />}
+                      //   onClick={startCamera}
+                      //   size="large"
+                      //   sx={{ mb: 2, mr: { xs: 0, sm: 1 }, width: { xs: '100%', sm: 'auto' } }}
+                      // >
+                      //   📱 Open Camera
+                      // </Button>
                     )} */}
                     
                     {/* File Upload Option - Always available */}
@@ -843,7 +840,7 @@ const AddProduct = () => {
                       <ListItem button key={index} onClick={() => handleSelectProduct(product)}>
                         <ListItemText 
                           primary={product.product_name}
-                          secondary={`${product.variety ? `Variety: ${product.variety}` : 'No variety'}${product.brand ? ` | Brand: ${product.brand}` : ' | No brand'}`}
+                          secondary={`${product.brand ? `Brand: ${product.brand}` : 'No brand'}${product.variety ? ` | Variety: ${product.variety}` : ' | No variety'}${product.size ? ` | Size: ${product.size}` : ''}`}
                         />
                       </ListItem>
                     ))}
@@ -880,15 +877,6 @@ const AddProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
-                    variant="outlined"
-                    fullWidth
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
                     label="Variety [Gala, Granny Smith etc] (Optional)"
                     variant="outlined"
                     fullWidth
@@ -898,13 +886,12 @@ const AddProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Description (Optional)"
+                    label="Size (Optional)"
                     variant="outlined"
                     fullWidth
-                    multiline
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={size}
+                    onChange={(e) => setSize(e.target.value)}
+                    helperText="e.g., 300ml, 500ml, 1L, Small, Medium, Large"
                   />
                 </Grid>
               </Grid>

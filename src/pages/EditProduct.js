@@ -8,10 +8,9 @@ const EditProduct = () => {
   const navigate = useNavigate();
 
   const [productName, setProductName] = useState('');
-  const [category, setCategory] = useState('');
   const [variety, setVariety] = useState('');
   const [brand, setBrand] = useState('');
-  const [description, setDescription] = useState('');
+  const [size, setSize] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -47,10 +46,9 @@ const EditProduct = () => {
         const response = await axiosInstance.get(`/products/${id}`);
         const product = response.data;
         setProductName(product.product_name);
-        setCategory(product.category);
         setVariety(product.variety);
         setBrand(product.brand || '');
-        setDescription(product.description);
+        setSize(product.size || product.description || ''); // Handle both old and new field names
       } catch (error) {
         console.error('Error fetching product:', error);
         setSnackbarMessage('Error fetching product data: ' + (error.response ? error.response.data.error : error.message));
@@ -106,10 +104,9 @@ const EditProduct = () => {
     try {
       await axiosInstance.put(`/products/${id}`, {
         product_name: productName,
-        category,
         variety,
         brand: brand || null, // Send null if brand is empty
-        description,
+        size,
       });
       setSnackbarMessage('Product updated successfully.');
       setSnackbarSeverity('success');
@@ -181,15 +178,6 @@ const EditProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Category [Eg: Fruit, Vegetable etc] (Optional)"
-                    variant="outlined"
-                    fullWidth
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
                     label="Variety [Gala, Granny Smith etc] (Optional)"
                     variant="outlined"
                     fullWidth
@@ -199,13 +187,12 @@ const EditProduct = () => {
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
-                    label="Description (Optional)"
+                    label="Size (Optional)"
                     variant="outlined"
                     fullWidth
-                    multiline
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={size}
+                    onChange={(e) => setSize(e.target.value)}
+                    helperText="e.g., 300ml, 500ml, 1L, Small, Medium, Large"
                   />
                 </Grid>
               </Grid>

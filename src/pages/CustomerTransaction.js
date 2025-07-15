@@ -35,6 +35,13 @@ const CustomerTransaction = () => {
     {
       product: '',
       productName: '',
+      // Add fields to store the actual product details for the backend
+      productDetails: {
+        product_name: '',
+        variety: '',
+        brand: '',
+        size: '',
+      },
       unitTypes: [],
       unitId: '',
       unitType: '',
@@ -74,6 +81,18 @@ const CustomerTransaction = () => {
       ...updatedItems[index],
       product: productId,
       productName: selectedProduct ? formatProductDisplay(selectedProduct) : '',
+      // Store the actual product details for the backend
+      productDetails: selectedProduct ? {
+        product_name: selectedProduct.product_name,
+        variety: selectedProduct.variety || '',
+        brand: selectedProduct.brand || '',
+        size: selectedProduct.size || selectedProduct.description || '',
+      } : {
+        product_name: '',
+        variety: '',
+        brand: '',
+        size: '',
+      },
       price: '',
       unitId: '',
       unitTypes: [],
@@ -172,6 +191,13 @@ const CustomerTransaction = () => {
       {
         product: '',
         productName: '',
+        // Add fields to store the actual product details for the backend
+        productDetails: {
+          product_name: '',
+          variety: '',
+          brand: '',
+          size: '',
+        },
         unitTypes: [],
         unitId: '',
         unitType: '',
@@ -188,6 +214,13 @@ const CustomerTransaction = () => {
       {
         product: '',
         productName: '',
+        // Add fields to store the actual product details for the backend
+        productDetails: {
+          product_name: '',
+          variety: '',
+          brand: '',
+          size: '',
+        },
         unitTypes: [],
         unitId: '',
         unitType: '',
@@ -253,40 +286,12 @@ const CustomerTransaction = () => {
           throw new Error(`Item ${index + 1} is missing required fields. Please fill in all fields.`);
         }
         
-        // Parse the product name format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
-        let productName, variety, brand;
-        
-        console.log('🔍 Parsing product name:', item.productName);
-        
-        if (item.productName.includes('(') && item.productName.includes(')')) {
-          // Has brand
-          const brandMatch = item.productName.match(/\(([^)]+)\)$/);
-          brand = brandMatch ? brandMatch[1] : '';
-          const withoutBrand = item.productName.replace(/\s*\([^)]+\)$/, '');
-          
-          if (withoutBrand.includes(' - ')) {
-            [productName, variety] = withoutBrand.split(' - ');
-          } else {
-            productName = withoutBrand;
-            variety = '';
-          }
-        } else if (item.productName.includes(' - ')) {
-          // Has variety but no brand
-          [productName, variety] = item.productName.split(' - ');
-          brand = '';
-        } else {
-          // Just product name
-          productName = item.productName;
-          variety = '';
-          brand = '';
-        }
-        
-        console.log('✅ Parsed product info:', { productName, variety, brand });
+        console.log('🔍 Using product details:', item.productDetails);
 
         const saleData = {
-          product_name: productName,
-          variety: variety || '',
-          brand: brand || '',
+          product_name: item.productDetails.product_name,
+          variety: item.productDetails.variety,
+          brand: item.productDetails.brand,
           retail_price: item.price,
           quantity: item.quantity,
           sale_date: item.date,
@@ -313,13 +318,14 @@ const CustomerTransaction = () => {
             // Show inventory setup link for missing inventory
             setInventoryLinkData({
               productId: item.product,
-              productName: productName,
-              variety: variety || '',
-              brand: brand || '',
+              productName: item.productName, // Use the formatted product name for display
+              variety: item.productDetails.variety,
+              brand: item.productDetails.brand,
+              size: item.productDetails.size,
               linkType: 'setup' // For setting up new inventory
             });
             setShowInventoryLink(true);
-            setSnackbarMessage(`${errorMessage} for ${productName}${variety ? ` - ${variety}` : ''}${brand ? ` (${brand})` : ''}. Would you like to set up inventory now?`);
+            setSnackbarMessage(`${errorMessage} for ${item.productDetails.product_name}${item.productDetails.brand ? ` (${item.productDetails.brand})` : ''}${item.productDetails.variety || item.productDetails.size ? ` - ${[item.productDetails.variety, item.productDetails.size].filter(Boolean).join(', ')}` : ''}. Would you like to set up inventory now?`);
             setSnackbarSeverity('error');
             setSnackbarOpen(true);
             setOpenModal(false);
@@ -329,13 +335,14 @@ const CustomerTransaction = () => {
             // Show reconcile inventory link for insufficient stock
             setInventoryLinkData({
               productId: item.product,
-              productName: productName,
-              variety: variety || '',
-              brand: brand || '',
+              productName: item.productName, // Use the formatted product name for display
+              variety: item.productDetails.variety,
+              brand: item.productDetails.brand,
+              size: item.productDetails.size,
               linkType: 'reconcile' // For reconciling existing inventory
             });
             setShowInventoryLink(true);
-            setSnackbarMessage(`${errorMessage} for ${productName}${variety ? ` - ${variety}` : ''}${brand ? ` (${brand})` : ''}. Would you like to reconcile inventory now?`);
+            setSnackbarMessage(`${errorMessage} for ${item.productDetails.product_name}${item.productDetails.brand ? ` (${item.productDetails.brand})` : ''}${item.productDetails.variety || item.productDetails.size ? ` - ${[item.productDetails.variety, item.productDetails.size].filter(Boolean).join(', ')}` : ''}. Would you like to reconcile inventory now?`);
             setSnackbarSeverity('error');
             setSnackbarOpen(true);
             setOpenModal(false);
@@ -343,7 +350,7 @@ const CustomerTransaction = () => {
           } else {
             // Show detailed error message including unit conversion info
             const unitType = item.unitTypes.find((u) => u.id === item.unitId)?.type || 'Unknown Unit';
-            const detailedMessage = `Failed to log sale for item ${index + 1} (${productName} - ${item.quantity} ${unitType}): ${errorMessage}`;
+            const detailedMessage = `Failed to log sale for item ${index + 1} (${item.productDetails.product_name} - ${item.quantity} ${unitType}): ${errorMessage}`;
             throw new Error(detailedMessage);
           }
         }
@@ -371,12 +378,25 @@ const CustomerTransaction = () => {
   // Helper function to format product display
   const formatProductDisplay = (product) => {
     let display = product.product_name;
-    if (product.variety) {
-      display += ` - ${product.variety}`;
-    }
+    
+    // Add brand in parentheses if present
     if (product.brand) {
       display += ` (${product.brand})`;
     }
+    
+    // Add variety and size with comma only if both are present
+    const varietyAndSize = [];
+    if (product.variety) {
+      varietyAndSize.push(product.variety);
+    }
+    if (product.size || product.description) { // Handle both old and new field names
+      varietyAndSize.push(product.size || product.description);
+    }
+    
+    if (varietyAndSize.length > 0) {
+      display += ` - ${varietyAndSize.join(', ')}`;
+    }
+    
     return display;
   };
 
@@ -562,7 +582,7 @@ const CustomerTransaction = () => {
               >
                 {inventoryLinkData.linkType === 'reconcile' 
                   ? 'Click here to reconcile inventory'
-                  : `Click here to set stock for ${inventoryLinkData.productName}${inventoryLinkData.variety ? ` - ${inventoryLinkData.variety}` : ''}${inventoryLinkData.brand ? ` (${inventoryLinkData.brand})` : ''}`
+                  : `Click here to set stock for ${inventoryLinkData.productName}${inventoryLinkData.brand ? ` (${inventoryLinkData.brand})` : ''}${(inventoryLinkData.variety || inventoryLinkData.size) ? ` - ${[inventoryLinkData.variety, inventoryLinkData.size].filter(Boolean).join(', ')}` : ''}`
                 }
               </MuiLink>
             </Box>

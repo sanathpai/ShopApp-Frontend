@@ -127,18 +127,18 @@ const UserDetails = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Product Name</TableCell>
-                <TableCell>Category</TableCell>
-                <TableCell>Variety</TableCell>
                 <TableCell>Brand</TableCell>
+                <TableCell>Variety</TableCell>
+                <TableCell>Size</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {products.slice(productsPage * rowsPerPage, productsPage * rowsPerPage + rowsPerPage).map((product) => (
                 <TableRow key={product.product_id}>
                   <TableCell>{product.product_name}</TableCell>
-                  <TableCell>{product.category}</TableCell>
-                  <TableCell>{product.variety}</TableCell>
                   <TableCell>{product.brand || 'No brand'}</TableCell>
+                  <TableCell>{product.variety || 'No variety'}</TableCell>
+                  <TableCell>{product.size || product.description || 'No size'}</TableCell>
                 </TableRow>
               ))}
               {products.length === 0 && (
