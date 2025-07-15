@@ -84,11 +84,19 @@ const CustomerTransaction = () => {
     if (selectedProduct) {
       try {
         const unitsResponse = await axiosInstance.get(`/units/product/${productId}`);
-        updatedItems[index].unitTypes = unitsResponse.data.map((unit) => ({
+        // Filter for selling units only and remove category from display
+        const sellingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'selling');
+        updatedItems[index].unitTypes = sellingUnits.map((unit) => ({
           id: unit.unit_id,
-          type: `${unit.unit_type} (${unit.unit_category})`,
+          type: unit.unit_type, // Remove (selling) from display
           category: unit.unit_category,
         }));
+        // Comment out the old code that showed all units with category in parentheses
+        // updatedItems[index].unitTypes = unitsResponse.data.map((unit) => ({
+        //   id: unit.unit_id,
+        //   type: `${unit.unit_type} (${unit.unit_category})`,
+        //   category: unit.unit_category,
+        // }));
       } catch (error) {
         console.error('Error fetching units:', error);
       }

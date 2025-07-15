@@ -70,11 +70,19 @@ const EditSale = () => {
           const unitsResponse = await axiosInstance.get(
             `/units/product/${product.product_id}`
           );
-          const units = unitsResponse.data.map((unit) => ({
-            unit_type: `${unit.unit_type} (${unit.unit_category})`,
+          // Filter for selling units only and remove category from display
+          const sellingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'selling');
+          const units = sellingUnits.map((unit) => ({
+            unit_type: unit.unit_type, // Remove (selling) from display
             unit_id: unit.unit_id,
             unit_category: unit.unit_category
           }));
+          // Comment out the old code that showed all units with category in parentheses
+          // const units = unitsResponse.data.map((unit) => ({
+          //   unit_type: `${unit.unit_type} (${unit.unit_category})`,
+          //   unit_id: unit.unit_id,
+          //   unit_category: unit.unit_category
+          // }));
           setUnitTypes(units);
         }
 
@@ -133,11 +141,19 @@ const EditSale = () => {
         const unitsResponse = await axiosInstance.get(
           `/units/product/${product.product_id}`
         );
-        const units = unitsResponse.data.map((unit) => ({
-          unit_type: `${unit.unit_type} (${unit.unit_category})`,
+        // Filter for selling units only and remove category from display
+        const sellingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'selling');
+        const units = sellingUnits.map((unit) => ({
+          unit_type: unit.unit_type, // Remove (selling) from display
           unit_id: unit.unit_id,
           unit_category: unit.unit_category
         }));
+        // Comment out the old code that showed all units with category in parentheses
+        // const units = unitsResponse.data.map((unit) => ({
+        //   unit_type: `${unit.unit_type} (${unit.unit_category})`,
+        //   unit_id: unit.unit_id,
+        //   unit_category: unit.unit_category
+        // }));
         setUnitTypes(units);
         setSelectedUnitId('');
       } catch (error) {

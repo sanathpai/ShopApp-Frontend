@@ -196,9 +196,9 @@ const Overview = () => {
           maxHeight: '80vh',
           overflowY: 'auto'
         }}>
-          <Typography variant="h6" gutterBottom>
+          {/* <Typography variant="h6" gutterBottom>
             Inventory Notifications
-          </Typography>
+          </Typography> */}
           
           {/* Products Without Inventory Section */}
           {productsWithoutInventory.length > 0 && (
@@ -252,7 +252,7 @@ const Overview = () => {
           {productsBelowThreshold.length > 0 && (
             <>
               <Typography variant="h6" color="warning.main" gutterBottom>
-                Products Below Threshold
+           Low Stock Warning
               </Typography>
               <TableContainer component={Paper}>
                 <Table size="small">

@@ -597,10 +597,10 @@ const AddUnit = () => {
                                 <strong>Profit Margin Calculation:</strong>
                               </Typography>
                               <Typography variant="body2">
-                                Cost per {selling_unit_type || 'selling unit'}: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+                                Cost per {selling_unit_type || 'selling unit'}: {orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
                               </Typography>
                               <Typography variant="body2">
-                                Profit per {selling_unit_type || 'selling unit'}: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+                                Profit per {selling_unit_type || 'selling unit'}: {retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
                               </Typography>
                               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                 Profit Margin: {calculatedProfitMargin !== null ? `${(calculatedProfitMargin * 100).toFixed(1)}%` : 'N/A'}
@@ -760,14 +760,14 @@ const AddUnit = () => {
                               </Typography>
                               <Typography variant="body2">
                                 {unitCategory === 'buying' 
-                                  ? `Cost per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: $${retailPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
-                                  : `Cost per ${newUnitType}: $${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  ? `Cost per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: ${retailPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  : `Cost per ${newUnitType}: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
                                 }
                               </Typography>
                               <Typography variant="body2">
                                 {unitCategory === 'buying'
-                                  ? `Profit per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: $${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
-                                  : `Profit per ${newUnitType}: $${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  ? `Profit per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  : `Profit per ${newUnitType}: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
                                 }
                               </Typography>
                               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
@@ -821,18 +821,18 @@ const AddUnit = () => {
               <>
                 New Unit Type: {newUnitType} ({unitCategory})<br />
                 Existing Unit: {existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type} ({existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_category})<br />
-                {unitCategory === 'buying' ? 'Order' : 'Retail'} Price (New Unit): ${unitCategory === 'buying' ? orderPrice : retailPrice}<br />
-                {unitCategory === 'buying' ? 'Retail' : 'Order'} Price (Existing Unit): ${unitCategory === 'buying' ? retailPrice : orderPrice}<br />
+                {unitCategory === 'buying' ? 'Order' : 'Retail'} Price (New Unit): {unitCategory === 'buying' ? orderPrice : retailPrice}<br />
+                {unitCategory === 'buying' ? 'Retail' : 'Order'} Price (Existing Unit): {unitCategory === 'buying' ? retailPrice : orderPrice}<br />
               </>
             ) : (
               <>
-                Retail Price: ${retailPrice}<br />
-                Order Price: ${orderPrice}<br />
+                Retail Price: {retailPrice}<br />
+                Order Price: {orderPrice}<br />
               </>
             )}
             Conversion Rate: {conversionRate}<br />
-            Cost per Selling Unit: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}<br />
-            Profit per Unit: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+            Cost per Selling Unit: {orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}<br />
+            Profit per Unit: {retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
             <br /><br />
             Would you like to proceed anyway or update the conversion rate?
           </DialogContentText>

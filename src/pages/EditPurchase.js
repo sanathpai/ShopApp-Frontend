@@ -107,10 +107,17 @@ const EditPurchase = () => {
         const unitsResponse = await axiosInstance.get(
           `/units/product/${product.product_id}`
         );
-        const units = unitsResponse.data.map((unit) => ({
+        // Filter for buying units only and remove category from display
+        const buyingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'buying');
+        const units = buyingUnits.map((unit) => ({
           id: unit.unit_id,
-          type: `${unit.unit_type} (${unit.unit_category})`
+          type: unit.unit_type // Remove (buying) from display
         }));
+        // Comment out the old code that showed all units with category in parentheses
+        // const units = unitsResponse.data.map((unit) => ({
+        //   id: unit.unit_id,
+        //   type: `${unit.unit_type} (${unit.unit_category})`
+        // }));
         setUnitTypes(units);
         setSelectedUnitType('');
       } catch (error) {
