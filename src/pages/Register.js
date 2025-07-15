@@ -84,7 +84,7 @@ const Register = () => {
       if (username) params.append('username', username);
       if (email) params.append('email', email);
       
-      const response = await axios.get(`https://shoppeappnow.com/api/auth/check-duplicates?${params}`);
+      const response = await axios.get(`http://localhost:8000/api/auth/check-duplicates?${params}`);
       const duplicates = response.data;
       
       setFieldErrors(prev => ({
@@ -135,12 +135,9 @@ const Register = () => {
       setError('Password is required');
       return;
     }
-    if (!formData.email.trim()) {
-      setError('Email address is required');
-      return;
-    }
     
-    if (!validateEmail(formData.email)) {
+    // Only validate email format if email is provided
+    if (formData.email.trim() && !validateEmail(formData.email)) {
       setError('Invalid email address');
       return;
     }
@@ -257,10 +254,9 @@ const Register = () => {
             />
             <TextField
               margin="normal"
-              required
               fullWidth
               id="email"
-              label="Email Address"
+              label="Email Address (Optional)"
               name="email"
               autoComplete="email"
               value={formData.email}
