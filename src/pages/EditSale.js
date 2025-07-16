@@ -36,53 +36,94 @@ const EditSale = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log('🚀 Starting to fetch edit sale data for ID:', id);
       try {
-        const productsResponse = await axiosInstance.get('/products');
-        setProducts(productsResponse.data);
-
+        console.log('💰 Fetching sale details for ID:', id);
         const saleResponse = await axiosInstance.get(`/sales/${id}`);
         const sale = saleResponse.data;
+        console.log('✅ Sale details fetched successfully:', sale);
 
-        // Find the product that matches the sale data (including brand if present)
-        const product = productsResponse.data.find(
-          (product) =>
-            product.product_name === sale.product_name &&
-            (product.variety || '') === (sale.variety || '') &&
-            (product.brand || '') === (sale.brand || '')
-        );
+        // Fetch the specific product for this sale using product_id
+        console.log('🎯 Fetching specific product for product_id:', sale.product_id);
+        const specificProductResponse = await axiosInstance.get(`/products/${sale.product_id}`);
+        const specificProduct = specificProductResponse.data;
+        console.log('✅ Specific product fetched successfully:', specificProduct);
 
-        // Format product details for display
-        let productDetailsDisplay = sale.product_name;
-        if (sale.variety) {
-          productDetailsDisplay += ` - ${sale.variety}`;
+        // Format product details for display using the actual product data
+        let productDetailsDisplay = specificProduct.product_name;
+        if (specificProduct.variety) {
+          productDetailsDisplay += ` - ${specificProduct.variety}`;
         }
-        if (sale.brand) {
-          productDetailsDisplay += ` (${sale.brand})`;
+        if (specificProduct.brand) {
+          productDetailsDisplay += ` (${specificProduct.brand})`;
         }
+        console.log('✅ Using actual product format:', productDetailsDisplay);
+        
+        console.log('📝 Setting form fields:');
+        console.log('   Product Details:', productDetailsDisplay);
+        console.log('   Retail Price:', sale.retail_price);
+        console.log('   Quantity:', sale.quantity);
+        console.log('   Sale Date:', sale.sale_date.split('T')[0]);
+        console.log('   Unit ID:', sale.unit_id);
         
         setProductDetails(productDetailsDisplay);
         setRetailPrice(sale.retail_price);
         setQuantity(sale.quantity);
         setSaleDate(sale.sale_date.split('T')[0]);
-        setSelectedUnitId(sale.unit_id);
-
-        if (product) {
-          const unitsResponse = await axiosInstance.get(
-            `/units/product/${product.product_id}`
-          );
-          const units = unitsResponse.data.map((unit) => ({
-            unit_type: `${unit.unit_type} (${unit.unit_category})`,
-            unit_id: unit.unit_id,
-            unit_category: unit.unit_category
-          }));
-          setUnitTypes(units);
+        
+        // Fetch units for the specific product
+        console.log('🔧 Fetching units for product ID:', sale.product_id);
+        const unitsResponse = await axiosInstance.get(
+          `/units/product/${sale.product_id}`
+        );
+        console.log('✅ Units fetched successfully:', unitsResponse.data);
+        
+        // Add debugging for unit matching
+        console.log('🔍 Unit matching debug:');
+        console.log('   Looking for unit_id:', sale.unit_id);
+        console.log('   Available units:', unitsResponse.data);
+        
+        // Filter for selling units only and remove category from display
+        const sellingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'selling');
+        const units = sellingUnits.map((unit) => ({
+          unit_type: unit.unit_type, // Remove (selling) from display
+          unit_id: unit.unit_id,
+          unit_category: unit.unit_category
+        }));
+        console.log('🎯 Processed selling units:', units);
+        
+        // Check if the sale's unit_id exists in available units
+        const unitExists = units.find(unit => unit.unit_id === sale.unit_id);
+        console.log('   Unit exists?', !!unitExists);
+        
+        if (unitExists) {
+          setSelectedUnitId(sale.unit_id);
+          console.log('✅ Unit found in current list:', unitExists);
+        } else {
+          console.warn('⚠️ Unit not found in current list for unit_id:', sale.unit_id);
+          setSelectedUnitId(''); // Reset to empty to avoid invalid value
+          setSnackbarMessage(`Warning: The unit type from this sale is no longer available. Please select a new unit type.`);
+          setSnackbarSeverity('warning');
+          setSnackbarOpen(true);
         }
+        
+        setUnitTypes(units);
+
+        // Only fetch all products when needed (for the dropdown)
+        console.log('📦 Fetching all products for dropdown...');
+        const productsResponse = await axiosInstance.get('/products');
+        console.log('✅ All products fetched successfully for dropdown');
+        setProducts(productsResponse.data);
 
         setIsProductSelected(true); // Enable other fields
+        console.log('🎉 All data loaded successfully, setting loading to false');
         setLoading(false);
+        
       } catch (error) {
-        console.error('Error fetching sale details:', error);
-        setSnackbarMessage('Error fetching sale details');
+        console.error('❌ Error fetching sale details:', error);
+        console.error('❌ Error response:', error.response);
+        console.error('❌ Error message:', error.message);
+        setSnackbarMessage('Error fetching sale details: ' + (error.response?.data?.error || error.message));
         setSnackbarSeverity('error');
         setSnackbarOpen(true);
         setLoading(false);
@@ -96,6 +137,14 @@ const EditSale = () => {
     const newProductDetails = e.target.value;
     setProductDetails(newProductDetails);
 
+    // Reset unit selection when product changes
+    setSelectedUnitId('');
+    setUnitTypes([]);
+
+    if (!newProductDetails) {
+      return;
+    }
+
     // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
     let productName, variety, brand;
     
@@ -106,43 +155,81 @@ const EditSale = () => {
       const withoutBrand = newProductDetails.replace(/\s*\([^)]+\)$/, '');
       
       if (withoutBrand.includes(' - ')) {
-        [productName, variety] = withoutBrand.split(' - ');
+        const parts = withoutBrand.split(' - ');
+        productName = parts[0];
+        variety = parts[1] || null;
       } else {
         productName = withoutBrand;
-        variety = '';
+        variety = null;
       }
     } else if (newProductDetails.includes(' - ')) {
       // Has variety but no brand
-      [productName, variety] = newProductDetails.split(' - ');
-      brand = '';
+      const parts = newProductDetails.split(' - ');
+      productName = parts[0];
+      variety = parts[1] || null;
+      brand = null;
     } else {
       // Just product name
       productName = newProductDetails;
-      variety = '';
-      brand = '';
+      variety = null;
+      brand = null;
     }
 
-    const product = products.find(product => 
-      product.product_name === productName && 
-      (product.variety || '') === variety &&
-      (product.brand || '') === brand
-    );
+    const product = products.find(product => {
+      const productMatch = product.product_name === productName;
+      // More flexible variety matching
+      const varietyMatch = (!variety && !product.variety) || 
+                          (variety === product.variety) ||
+                          (!variety && product.variety) || 
+                          (variety && !product.variety);
+      // More flexible brand matching  
+      const brandMatch = (!brand && !product.brand) || 
+                        (brand === product.brand) ||
+                        (!brand && product.brand) || 
+                        (brand && !product.brand);
+      return productMatch && varietyMatch && brandMatch;
+    });
 
     if (product) {
       try {
+        console.log('🔧 Fetching units for product change:', product.product_id);
         const unitsResponse = await axiosInstance.get(
           `/units/product/${product.product_id}`
         );
-        const units = unitsResponse.data.map((unit) => ({
-          unit_type: `${unit.unit_type} (${unit.unit_category})`,
-          unit_id: unit.unit_id,
-          unit_category: unit.unit_category
-        }));
-        setUnitTypes(units);
-        setSelectedUnitId('');
+        
+        if (unitsResponse.data && unitsResponse.data.length > 0) {
+          // Filter for selling units only
+          const sellingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'selling');
+          const units = sellingUnits.map((unit) => ({
+            unit_type: unit.unit_type,
+            unit_id: unit.unit_id,
+            unit_category: unit.unit_category
+          }));
+          
+          setUnitTypes(units);
+          console.log('✅ Units loaded successfully for product change:', units);
+          
+          if (units.length === 0) {
+            setSnackbarMessage('No selling units found for this product. Please add units first.');
+            setSnackbarSeverity('warning');
+            setSnackbarOpen(true);
+          }
+        } else {
+          setSnackbarMessage('No units found for this product. Please add units first.');
+          setSnackbarSeverity('warning');
+          setSnackbarOpen(true);
+        }
       } catch (error) {
         console.error('Error fetching units:', error);
+        setSnackbarMessage('Error fetching units for this product.');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
       }
+    } else {
+      console.warn('Product not found:', productName, variety, brand);
+      setSnackbarMessage('Product not found. Please select a valid product.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
     }
   };
 
@@ -161,6 +248,21 @@ const EditSale = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate required fields
+    if (!productDetails) {
+      setSnackbarMessage('Please select a product.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (!selectedUnitId) {
+      setSnackbarMessage('Please select a unit type.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
     // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
     let productName, variety, brand;
     
@@ -171,20 +273,32 @@ const EditSale = () => {
       const withoutBrand = productDetails.replace(/\s*\([^)]+\)$/, '');
       
       if (withoutBrand.includes(' - ')) {
-        [productName, variety] = withoutBrand.split(' - ');
+        const parts = withoutBrand.split(' - ');
+        productName = parts[0];
+        variety = parts[1] || null;
       } else {
         productName = withoutBrand;
-        variety = '';
+        variety = null;
       }
     } else if (productDetails.includes(' - ')) {
       // Has variety but no brand
-      [productName, variety] = productDetails.split(' - ');
-      brand = '';
+      const parts = productDetails.split(' - ');
+      productName = parts[0];
+      variety = parts[1] || null;
+      brand = null;
     } else {
       // Just product name
       productName = productDetails;
-      variety = '';
-      brand = '';
+      variety = null;
+      brand = null;
+    }
+
+    // Validate that product exists
+    if (!productName) {
+      setSnackbarMessage('Invalid product selection. Please select a valid product.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
     }
 
     const selectedUnit = unitTypes.find(

@@ -19,8 +19,12 @@ import {
   DialogTitle,
   Pagination,
   PaginationItem,
+  CardMedia,
+  Chip,
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
+import ImageIcon from '@mui/icons-material/Image';
+import AddAPhotoIcon from '@mui/icons-material/AddAPhoto';
 import axiosInstance from '../AxiosInstance';
 
 const ViewProducts = () => {
@@ -95,6 +99,34 @@ const ViewProducts = () => {
     navigate(`/dashboard/products/edit/${product.product_id}`);
   };
 
+  const handleAddImage = (product) => {
+    if (!isOnline) {
+      setSnackbarMessage('You are offline. Cannot add image.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+    // Navigate to edit page with a flag to focus on image upload
+    navigate(`/dashboard/products/edit/${product.product_id}?addImage=true`);
+  };
+
+  // Helper function to get product image URL
+  const getProductImageUrl = (product) => {
+    // Priority: S3 URL > base64 image > null
+    if (product.image_s3_url) {
+      return product.image_s3_url;
+    }
+    if (product.image && product.image.startsWith('data:image/')) {
+      return product.image;
+    }
+    return null;
+  };
+
+  // Helper function to check if product has image
+  const hasImage = (product) => {
+    return !!(product.image_s3_url || (product.image && product.image.startsWith('data:image/')));
+  };
+
   const handleDelete = async () => {
     if (!isOnline) {
       setSnackbarMessage('You are offline. Cannot delete the product.');
@@ -158,23 +190,87 @@ const ViewProducts = () => {
       <Grid container spacing={3}>
         {products.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((product) => (
           <Grid item xs={12} sm={6} md={4} key={product.product_id}>
-            <Card>
-              <CardContent>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {/* Product Image Section */}
+              {hasImage(product) ? (
+                <CardMedia
+                  component="img"
+                  sx={{
+                    height: 200,
+                    objectFit: 'cover',
+                    backgroundColor: 'grey.100'
+                  }}
+                  image={getProductImageUrl(product)}
+                  alt={product.product_name}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    height: 200,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'grey.50',
+                    border: '2px dashed',
+                    borderColor: 'grey.300',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: 'grey.100',
+                      borderColor: 'primary.main',
+                    }
+                  }}
+                  onClick={() => handleAddImage(product)}
+                >
+                  <ImageIcon sx={{ fontSize: 48, color: 'grey.400', mb: 1 }} />
+                  <Typography variant="body2" color="text.secondary" align="center">
+                    No Image
+                  </Typography>
+                  <Chip
+                    icon={<AddAPhotoIcon />}
+                    label="Add Image"
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
+              )}
+              
+              <CardContent sx={{ flexGrow: 1 }}>
                 <Typography variant="h6">
                   {product.product_name}
-                  {product.variety && ` - ${product.variety}`}
                   {product.brand && ` (${product.brand})`}
+                  {(product.variety || product.size) && ` - ${[product.variety, product.size || product.description].filter(Boolean).join(', ')}`}
                 </Typography>
-                {product.category && (
-                  <Typography variant="body2" color="text.secondary">
-                    Category: {product.category}
-                  </Typography>
-                )}
+                
+                {/* Image status indicator */}
+                <Box sx={{ mt: 1 }}>
+                  <Chip
+                    icon={hasImage(product) ? <ImageIcon /> : <AddAPhotoIcon />}
+                    label={hasImage(product) ? "Has Image" : "No Image"}
+                    color={hasImage(product) ? "success" : "default"}
+                    size="small"
+                    variant="outlined"
+                  />
+                </Box>
               </CardContent>
+              
               <CardActions>
                 <Button variant="contained" color="primary" onClick={() => handleEdit(product)}>
                   Edit
                 </Button>
+                {!hasImage(product) && (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<AddAPhotoIcon />}
+                    onClick={() => handleAddImage(product)}
+                    size="small"
+                  >
+                    Add Image
+                  </Button>
+                )}
                 <Button
                   variant="contained"
                   color="secondary"
@@ -216,21 +312,14 @@ const ViewProducts = () => {
               <DialogContentText>
                 <strong>Product Name:</strong> {currentProduct.product_name}
               </DialogContentText>
-              {currentProduct.variety && (
-                <DialogContentText>
-                  <strong>Variety:</strong> {currentProduct.variety}
-                </DialogContentText>
-              )}
-              {currentProduct.brand && (
-                <DialogContentText>
-                  <strong>Brand:</strong> {currentProduct.brand}
-                </DialogContentText>
-              )}
               <DialogContentText>
-                <strong>Category:</strong> {currentProduct.category}
+                <strong>Brand:</strong> {currentProduct.brand || 'No brand'}
               </DialogContentText>
               <DialogContentText>
-                <strong>Description:</strong> {currentProduct.description}
+                <strong>Variety:</strong> {currentProduct.variety || 'No variety'}
+              </DialogContentText>
+              <DialogContentText>
+                <strong>Size:</strong> {currentProduct.size || currentProduct.description || 'No size specified'}
               </DialogContentText>
             </>
           )}

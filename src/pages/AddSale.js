@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axiosInstance from '../AxiosInstance';
 import {
   Container,
@@ -14,7 +14,11 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Link as MuiLink
+  Link as MuiLink,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 
@@ -26,6 +30,7 @@ const AddSale = () => {
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]); // Default to today's date
   const [selectedUnitId, setSelectedUnitId] = useState('');  // Updated to use unit_id instead of unit_type
   const [productDetails, setProductDetails] = useState('');
+  const [discount, setDiscount] = useState('0'); // Add discount state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -35,76 +40,207 @@ const AddSale = () => {
   const [showInventoryLink, setShowInventoryLink] = useState(false); // Control showing inventory link
   const [inventoryLinkData, setInventoryLinkData] = useState(null); // Store product data for inventory link
 
-  // Fetch products when the component is mounted
+  // Search functionality states
+  const [searchResults, setSearchResults] = useState([]);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [productName, setProductName] = useState('');
+  const [productsLoading, setProductsLoading] = useState(false); // Set to false since we don't load all products
+
+  // Refs for search functionality
+  const justSelectedRef = useRef(false);
+  const blurTimeoutRef = useRef(null);
+
+  // Search functionality for products when there are more than 5
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const productsResponse = await axiosInstance.get('/products');
-        setProducts(productsResponse.data);
-      } catch (error) {
-        console.error('Error fetching products:', error);
+    const updateSearchResults = async () => {
+      // Enable search immediately without waiting for products.length check
+      if (productName.length > 2 && isOnline && !justSelectedRef.current) {
+        try {
+          console.log(`🔍 Searching for products with query: "${productName}"`);
+          const response = await axiosInstance.get(`/products/search?q=${productName}`);
+          console.log('🔍 Raw search response:', response.data);
+          
+          const uniqueResults = response.data.reduce((acc, product) => {
+            const key = `${product.product_name}-${product.variety || ''}-${product.brand || ''}`;
+            if (!acc[key]) {
+              acc[key] = product;
+            }
+            return acc;
+          }, {});
+          setSearchResults(Object.values(uniqueResults));
+          console.log(`✅ Processed ${Object.values(uniqueResults).length} unique results`);
+        } catch (error) {
+          console.error('❌ Error fetching search results:', error);
+          setSearchResults([]);
+        }
+      } else {
+        setSearchResults([]);
+      }
+      
+      // Reset the justSelected flag after the effect runs
+      if (justSelectedRef.current) {
+        justSelectedRef.current = false;
       }
     };
 
-    fetchData();
+    updateSearchResults();
+  }, [productName, isOnline]); // Remove products.length dependency
+
+  // Network status handling
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      // Clear any pending blur timeout
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
   }, []);
 
-  const handleProductChange = async (e) => {
-    setProductDetails(e.target.value);
-    setIsProductSelected(true); // Enable visibility of other fields
-    // Clear previous selections when product changes
+  // Handle product selection for searchable field
+  const handleSelectProduct = (product) => {
+    console.log('🔍 handleSelectProduct called with:', product);
+    
+    // Clear any pending blur timeout
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    
+    justSelectedRef.current = true; // Set flag to prevent immediate search
+    
+    // Check if product has the expected fields
+    console.log('📦 Product object structure:', Object.keys(product));
+    console.log('🔑 Product ID:', product.product_id);
+    
+    const productId = product.product_id;
+    
+    if (!productId) {
+      console.error('❌ Product missing ID field:', product);
+      setSnackbarMessage('Error: Product selection failed - missing ID');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    // Set the formatted product display
+    const formattedDisplay = formatProductDisplay(product);
+    setProductDetails(formattedDisplay);
+    setProductName(formattedDisplay);
+    setIsProductSelected(true);
     setSelectedUnitId('');
     setRetailPrice('');
-    setShowInventoryLink(false); // Reset inventory link visibility
-    
-    // Parse the product details format: "ProductName - Variety (Brand)" or "ProductName - Variety" or "ProductName (Brand)" or "ProductName"
-    let productName, variety, brand;
-    
-    if (e.target.value.includes('(') && e.target.value.includes(')')) {
-      // Has brand
-      const brandMatch = e.target.value.match(/\(([^)]+)\)$/);
-      brand = brandMatch ? brandMatch[1] : '';
-      const withoutBrand = e.target.value.replace(/\s*\([^)]+\)$/, '');
-      
-      if (withoutBrand.includes(' - ')) {
-        [productName, variety] = withoutBrand.split(' - ');
-      } else {
-        productName = withoutBrand;
-        variety = '';
-      }
-    } else if (e.target.value.includes(' - ')) {
-      // Has variety but no brand
-      [productName, variety] = e.target.value.split(' - ');
-      brand = '';
-    } else {
-      // Just product name
-      productName = e.target.value;
-      variety = '';
-      brand = '';
-    }
-
-    const product = products.find(product => 
-      product.product_name === productName && 
-      (product.variety || '') === variety &&
-      (product.brand || '') === brand
-    );
+    setShowInventoryLink(false);
     setCurrentProduct(product);
-
-    if (product) {
+    
+    // Fetch units for the selected product
+    const fetchUnits = async () => {
       try {
-        const unitsResponse = await axiosInstance.get(`/units/product/${product.product_id}`);
+        const unitsResponse = await axiosInstance.get(`/units/product/${productId}`);
         const units = unitsResponse.data;
-
-        // Now we map unit IDs along with unit types and categories
-        setUnitTypes(units.map(unit => ({
-          unit_type: `${unit.unit_type} (${unit.unit_category})`,
+        const sellingUnits = units.filter(unit => unit.unit_category === 'selling');
+        setUnitTypes(sellingUnits.map(unit => ({
+          unit_type: unit.unit_type,
           unit_id: unit.unit_id,
           unit_category: unit.unit_category
         })));
       } catch (error) {
         console.error('Error fetching units:', error);
       }
+    };
+    
+    fetchUnits();
+    
+    // Clear search results
+    setSearchResults([]);
+  };
+
+  // Handle product name change for searchable field
+  const handleProductNameChange = (value) => {
+    setProductName(value);
+    setProductDetails('');
+    setIsProductSelected(false);
+    setSelectedUnitId('');
+    setRetailPrice('');
+    setShowInventoryLink(false);
+    setCurrentProduct(null);
+    setUnitTypes([]);
+  };
+
+  // Handle blur for searchable field
+  const handleProductNameBlur = () => {
+    // Clear search results after a small delay to allow clicking on results
+    blurTimeoutRef.current = setTimeout(() => {
+      setSearchResults([]);
+    }, 150);
+  };
+
+  // Handle focus for searchable field
+  const handleProductNameFocus = () => {
+    // Clear any pending blur timeout when field gets focus again
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
     }
+  };
+
+  // Render product selection component based on product count
+  const renderProductSelection = () => {
+    // Show loading state while products are being fetched
+    if (productsLoading) {
+      return (
+        <TextField
+          label="Loading products..."
+          variant="outlined"
+          fullWidth
+          disabled
+          helperText="Please wait while products are being loaded..."
+        />
+      );
+    }
+
+    // Always show searchable field once products are loaded  
+    return (
+      <Box>
+        <TextField
+          label="Product name"
+          variant="outlined"
+          fullWidth
+          value={productName}
+          onChange={(e) => handleProductNameChange(e.target.value)}
+          onBlur={handleProductNameBlur}
+          onFocus={handleProductNameFocus}
+          required
+          helperText="Start typing to search products..."
+        />
+        <List>
+          {searchResults.map((product, resultIndex) => (
+            <ListItem 
+              button 
+              key={resultIndex} 
+              onClick={() => handleSelectProduct(product)}
+            >
+              <ListItemText 
+                primary={product.product_name}
+                secondary={`${product.brand ? `Brand: ${product.brand}` : 'No brand'}${product.variety ? ` | Variety: ${product.variety}` : ' | No variety'}${product.size ? ` | Size: ${product.size}` : ''}`}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
+    );
   };
 
   const handleUnitChange = async (e) => {
@@ -186,12 +322,15 @@ const AddSale = () => {
         quantity: quantity,
         sale_date: saleDate,
         unit_id: selectedUnitId,  // Use the unit_id
-        unit_category: selectedUnit.unit_category // Include the unit_category
+        unit_category: selectedUnit.unit_category, // Include the unit_category
+        discount: discount, // Add discount to the sale data
+        trans_id: `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}` // Generate unique transaction ID for single sales
       });
       setSnackbarMessage('Sale added successfully!');
       setSnackbarSeverity('success');
       setRetailPrice('');
       setQuantity('');
+      setDiscount('0'); // Reset discount
       setSaleDate(new Date().toISOString().split('T')[0]); // Reset to today's date
       setSelectedUnitId('');
       setProductDetails('');
@@ -274,16 +413,7 @@ const AddSale = () => {
           </Typography>
           <form onSubmit={handleSubmit}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <FormControl fullWidth required>
-                <InputLabel>Select the product sold</InputLabel>
-                <Select value={productDetails} onChange={handleProductChange}>
-                  {products.map((product) => (
-                    <MenuItem key={product.product_id} value={formatProductDisplay(product)}>
-                      {formatProductDisplay(product)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {renderProductSelection()}
 
               {isProductSelected && (
                 <>
@@ -314,6 +444,16 @@ const AddSale = () => {
                     onChange={(e) => setQuantity(e.target.value)}
                     fullWidth
                     required
+                  />
+
+                  <TextField
+                    label="Discount (ZMW)"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(Math.max(0, e.target.value || 0))}
+                    fullWidth
+                    inputProps={{ min: 0, step: 0.01 }}
+                    helperText="Optional discount amount"
                   />
 
                   <TextField

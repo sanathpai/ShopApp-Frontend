@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   TextField,
@@ -21,7 +21,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  InputLabel,
+  Select,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -55,6 +61,16 @@ const AddUnit = () => {
   const [calculatedProfitMargin, setCalculatedProfitMargin] = useState(0);
   const [pendingFormData, setPendingFormData] = useState(null);
 
+  // Search functionality states
+  const [searchResults, setSearchResults] = useState([]);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [productName, setProductName] = useState('');
+  const [productsLoading, setProductsLoading] = useState(false); // Set to false since we don't load all products
+
+  // Refs for search functionality
+  const justSelectedRef = useRef(false);
+  const blurTimeoutRef = useRef(null);
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -84,18 +100,80 @@ const AddUnit = () => {
     }
   };
 
-  // Fetch products when the component loads
+  // Remove the products loading useEffect entirely since we only use search now
+  // useEffect(() => {
+  //   const fetchProducts = async () => {
+  //     try {
+  //       setProductsLoading(true); // Set loading to true before fetching
+  //       const response = await axiosInstance.get('/products');
+  //       setProducts(response.data);
+  //     } catch (error) {
+  //       console.error('Error fetching products:', error);
+  //     } finally {
+  //       setProductsLoading(false); // Set loading to false after fetching
+  //     }
+  //   };
+
+  //   fetchProducts();
+  // }, []);
+
+  // Search functionality for products when there are more than 5
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axiosInstance.get('/products');
-        setProducts(response.data);
-      } catch (error) {
-        console.error('Error fetching products:', error);
+    const updateSearchResults = async () => {
+      // Enable search immediately without waiting for products.length check
+      if (productName.length > 2 && isOnline && !justSelectedRef.current) {
+        try {
+          console.log(`🔍 Searching for products with query: "${productName}"`);
+          const response = await axiosInstance.get(`/products/search?q=${productName}`);
+          console.log('🔍 Raw search response:', response.data);
+          
+          const uniqueResults = response.data.reduce((acc, product) => {
+            const key = `${product.product_name}-${product.variety || ''}-${product.brand || ''}`;
+            if (!acc[key]) {
+              acc[key] = product;
+            }
+            return acc;
+          }, {});
+          setSearchResults(Object.values(uniqueResults));
+          console.log(`✅ Processed ${Object.values(uniqueResults).length} unique results`);
+        } catch (error) {
+          console.error('❌ Error fetching search results:', error);
+          setSearchResults([]);
+        }
+      } else {
+        setSearchResults([]);
+      }
+      
+      // Reset the justSelected flag after the effect runs
+      if (justSelectedRef.current) {
+        justSelectedRef.current = false;
       }
     };
 
-    fetchProducts();
+    updateSearchResults();
+  }, [productName, isOnline]); // Remove products.length dependency
+
+  // Network status handling
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      // Clear any pending blur timeout
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Get the product ID from query params if available
@@ -104,85 +182,180 @@ const AddUnit = () => {
     const productIdFromParams = queryParams.get('product_id');
     const fromProduct = queryParams.get('from_product') === 'true';
     
-    if (productIdFromParams && products.length > 0) {
-      // Validate that the product ID exists in the products list
-      const productExists = products.find(p => p.product_id.toString() === productIdFromParams);
-      if (productExists) {
-        setProductId(productIdFromParams);
-      } else {
-        console.warn('⚠️ Product ID from URL does not exist in products list:', productIdFromParams);
-      }
+    if (productIdFromParams) {
+      // Fetch the specific product to validate and set the product name
+      const fetchProductById = async () => {
+        try {
+          const response = await axiosInstance.get(`/products/${productIdFromParams}`);
+          const product = response.data;
+          setProductId(productIdFromParams);
+          setProductName(formatProductDisplay(product));
+        } catch (error) {
+          console.warn('⚠️ Product ID from URL does not exist:', productIdFromParams);
+        }
+      };
+      fetchProductById();
     }
     if (fromProduct) {
       setFromProductFlow(true);
     }
-  }, [location, products]); // Add products as dependency
+  }, [location]); // Remove products dependency
+
+  // Handle product selection for searchable field
+  const handleSelectProduct = (product) => {
+    console.log('🔍 handleSelectProduct called with:', product);
+    
+    // Clear any pending blur timeout
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+    
+    justSelectedRef.current = true; // Set flag to prevent immediate search
+    
+    // Check if product has the expected fields
+    console.log('📦 Product object structure:', Object.keys(product));
+    console.log('🔑 Product ID:', product.product_id);
+    
+    const productId = product.product_id;
+    
+    if (!productId) {
+      console.error('❌ Product missing ID field:', product);
+      setSnackbarMessage('Error: Product selection failed - missing ID');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    // Set the product ID and name
+    setProductId(productId.toString());
+    setProductName(formatProductDisplay(product));
+    
+    // Clear search results
+    setSearchResults([]);
+  };
+
+  // Handle product name change for searchable field
+  const handleProductNameChange = (value) => {
+    setProductName(value);
+    // Clear product_id if user is typing a new search
+    if (product_id) {
+      setProductId('');
+    }
+  };
+
+  // Handle blur for searchable field
+  const handleProductNameBlur = () => {
+    // Clear search results after a small delay to allow clicking on results
+    blurTimeoutRef.current = setTimeout(() => {
+      setSearchResults([]);
+    }, 150);
+  };
+
+  // Handle focus for searchable field
+  const handleProductNameFocus = () => {
+    // Clear any pending blur timeout when field gets focus again
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+    }
+  };
+
+  // Render product selection component based on product count
+  const renderProductSelection = () => {
+    // Show loading state while products are being fetched
+    if (productsLoading) {
+      return (
+        <TextField
+          label="Loading products..."
+          variant="outlined"
+          fullWidth
+          disabled
+          helperText="Please wait while products are being loaded..."
+        />
+      );
+    }
+
+    // Always show searchable field once products are loaded
+    return (
+      <Box>
+        <TextField
+          label="Select Product"
+          variant="outlined"
+          fullWidth
+          value={productName}
+          onChange={(e) => handleProductNameChange(e.target.value)}
+          onBlur={handleProductNameBlur}
+          onFocus={handleProductNameFocus}
+          required
+          helperText="Start typing to search products..."
+        />
+        <List>
+          {searchResults.map((product, resultIndex) => (
+            <ListItem 
+              button 
+              key={resultIndex} 
+              onClick={() => handleSelectProduct(product)}
+            >
+              <ListItemText 
+                primary={product.product_name}
+                secondary={`${product.brand ? `Brand: ${product.brand}` : 'No brand'}${product.variety ? ` | Variety: ${product.variety}` : ' | No variety'}${product.size ? ` | Size: ${product.size}` : ''}`}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
+    );
+  };
 
   // Fetch units based on the selected product
   useEffect(() => {
-    // Only proceed if we have a product_id and the products array is populated
-    if (product_id && products.length > 0) {
+    // Only proceed if we have a product_id
+    if (product_id) {
       const fetchUnits = async () => {
         try {
-          // First get the selected product to find its product name
-          // Convert product_id to number for comparison since database IDs are numbers
-          const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
-          console.log('🎯 SELECTED PRODUCT:', selectedProduct);
-          console.log('🔍 LOOKING FOR PRODUCT_ID:', product_id, 'TYPE:', typeof product_id);
-          console.log('🔍 AVAILABLE PRODUCTS:', products.map(p => ({ id: p.product_id, type: typeof p.product_id, name: p.product_name })));
+          // Fetch the selected product to get its details
+          const productResponse = await axiosInstance.get(`/products/${product_id}`);
+          const selectedProduct = productResponse.data;
           
-          if (selectedProduct) {
-            console.log('🔍 SEARCHING FOR UNITS with product name:', selectedProduct.product_name);
-            // Fetch search unit types from all users for this product (for autocomplete suggestions)
-            await fetchSearchUnitTypes(selectedProduct.product_name);
-            
-            // Get all products with the same product name (all varieties)
-            const sameProductVarieties = products.filter(p => p.product_name === selectedProduct.product_name);
-            
-            // Fetch units for all varieties of this product
-            const unitPromises = sameProductVarieties.map(product => 
-              axiosInstance.get(`/units/product/${product.product_id}`)
-            );
-            
-            const unitResponses = await Promise.all(unitPromises);
-            
-            // Combine all units from all varieties
-            const allUnitsForProduct = unitResponses.flatMap(response => response.data);
-            
-            // Set existing units (for the specific product_id - needed for the existing unit dropdown)
-            // Convert product_id to number for comparison
-            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === parseInt(product_id));
-            setExistingUnits(specificProductUnits);
-            
-            // Extract unique unit types for all varieties of this product
-            const uniqueUnitTypes = [...new Set(allUnitsForProduct.map(unit => unit.unit_type))];
-            setProductUnitTypes(uniqueUnitTypes);
+          console.log('🎯 SELECTED PRODUCT:', selectedProduct);
+          console.log('🔍 SEARCHING FOR UNITS with product name:', selectedProduct.product_name);
+          
+          // Fetch search unit types from all users for this product (for autocomplete suggestions)
+          await fetchSearchUnitTypes(selectedProduct.product_name);
+          
+          // Fetch units for this specific product
+          const unitsResponse = await axiosInstance.get(`/units/product/${product_id}`);
+          const specificProductUnits = unitsResponse.data;
+          
+          setExistingUnits(specificProductUnits);
+          
+          // Extract unique unit types for this product
+          const uniqueUnitTypes = [...new Set(specificProductUnits.map(unit => unit.unit_type))];
+          setProductUnitTypes(uniqueUnitTypes);
 
-            // Check if units already exist for this specific product
-            if (specificProductUnits.length > 0) {
-              setIsAddingNewUnit(true); // This means there are existing units, so show the new unit form
-            } else {
-              setIsAddingNewUnit(false); // No existing units, show the full form for adding both buying and selling units
-            }
+          // Check if units already exist for this specific product
+          if (specificProductUnits.length > 0) {
+            setIsAddingNewUnit(true); // This means there are existing units, so show the new unit form
           } else {
-            console.warn('⚠️ Selected product not found in products array. Product ID:', product_id);
-            // Clear search unit types if product not found
-            setSearchUnitTypes([]);
-            setProductUnitTypes([]);
-            setExistingUnits([]);
+            setIsAddingNewUnit(false); // No existing units, show the full form for adding both buying and selling units
           }
         } catch (error) {
-          console.error('Error fetching units:', error);
+          console.error('Error fetching product or units:', error);
+          // Clear unit types when product not found
+          setSearchUnitTypes([]);
+          setProductUnitTypes([]);
+          setExistingUnits([]);
         }
       };
       fetchUnits();
     } else {
-      // Clear unit types when no product is selected or products array is empty
+      // Clear unit types when no product is selected
       setProductUnitTypes([]);
       setSearchUnitTypes([]);
       setExistingUnits([]);
     }
-  }, [product_id, products]);
+  }, [product_id]); // Remove products dependency
 
   // Calculate profit margin when relevant values change
   useEffect(() => {
@@ -348,11 +521,18 @@ const AddUnit = () => {
 
       // If coming from product flow, handle the next step
       if (fromProductFlow) {
-        const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
-        setCurrentProductInfo(selectedProduct);
-        
-        // Always show the dialog when coming from product flow (both first time and subsequent)
-        setAddAnotherDialogOpen(true);
+        try {
+          const productResponse = await axiosInstance.get(`/products/${product_id}`);
+          const selectedProduct = productResponse.data;
+          setCurrentProductInfo(selectedProduct);
+          
+          // Always show the dialog when coming from product flow (both first time and subsequent)
+          setAddAnotherDialogOpen(true);
+        } catch (error) {
+          console.error('Error fetching product for dialog:', error);
+          // Show dialog anyway
+          setAddAnotherDialogOpen(true);
+        }
       } else {
         // Reset the form fields for regular flow
         resetForm();
@@ -400,31 +580,22 @@ const AddUnit = () => {
     if (product_id) {
       const fetchUnits = async () => {
         try {
-          const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
+          // Fetch the selected product to get its details
+          const productResponse = await axiosInstance.get(`/products/${product_id}`);
+          const selectedProduct = productResponse.data;
           
           if (selectedProduct) {
             // Fetch search unit types from all users for this product (for autocomplete suggestions)
             await fetchSearchUnitTypes(selectedProduct.product_name);
             
-            // Get all products with the same product name (all varieties)
-            const sameProductVarieties = products.filter(p => p.product_name === selectedProduct.product_name);
+            // Fetch units for this specific product
+            const unitsResponse = await axiosInstance.get(`/units/product/${product_id}`);
+            const specificProductUnits = unitsResponse.data;
             
-            // Fetch units for all varieties of this product
-            const unitPromises = sameProductVarieties.map(product => 
-              axiosInstance.get(`/units/product/${product.product_id}`)
-            );
-            
-            const unitResponses = await Promise.all(unitPromises);
-            
-            // Combine all units from all varieties
-            const allUnitsForProduct = unitResponses.flatMap(response => response.data);
-            
-            // Set existing units (for the specific product_id - needed for the existing unit dropdown)
-            const specificProductUnits = allUnitsForProduct.filter(unit => unit.product_id === parseInt(product_id));
             setExistingUnits(specificProductUnits);
             
-            // Extract unique unit types for all varieties of this product
-            const uniqueUnitTypes = [...new Set(allUnitsForProduct.map(unit => unit.unit_type))];
+            // Extract unique unit types for this product
+            const uniqueUnitTypes = [...new Set(specificProductUnits.map(unit => unit.unit_type))];
             setProductUnitTypes(uniqueUnitTypes);
 
             // Since we now have existing units, set to adding new unit mode
@@ -438,12 +609,19 @@ const AddUnit = () => {
     }
   };
 
-  const handleFinishAddingUnits = () => {
+  const handleFinishAddingUnits = async () => {
     setAddAnotherDialogOpen(false);
-    // Navigate to stock entry page
-    const selectedProduct = products.find(p => p.product_id === parseInt(product_id));
-    if (selectedProduct) {
-      navigate(`/dashboard/inventories/stock-entry?product_id=${selectedProduct.product_id}&product_name=${encodeURIComponent(selectedProduct.product_name)}&variety=${encodeURIComponent(selectedProduct.variety || '')}`);
+    // Fetch the selected product to get its details for navigation
+    try {
+      const productResponse = await axiosInstance.get(`/products/${product_id}`);
+      const selectedProduct = productResponse.data;
+      if (selectedProduct) {
+        navigate(`/dashboard/inventories/stock-entry?product_id=${selectedProduct.product_id}&product_name=${encodeURIComponent(selectedProduct.product_name)}&variety=${encodeURIComponent(selectedProduct.variety || '')}`);
+      }
+    } catch (error) {
+      console.error('Error fetching product for navigation:', error);
+      // Navigate anyway with just the product_id
+      navigate(`/dashboard/inventories/stock-entry?product_id=${product_id}`);
     }
   };
 
@@ -465,21 +643,7 @@ const AddUnit = () => {
             <form onSubmit={handleFormSubmit}>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <TextField
-                    select
-                    label="Select Product"
-                    variant="outlined"
-                    fullWidth
-                    value={product_id}
-                    onChange={(e) => setProductId(e.target.value)}
-                    required
-                  >
-                    {products.map((product) => (
-                      <MenuItem key={product.product_id} value={product.product_id}>
-                        {formatProductDisplay(product)}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  {renderProductSelection()}
                 </Grid>
                 {product_id && (
                   <>
@@ -597,10 +761,10 @@ const AddUnit = () => {
                                 <strong>Profit Margin Calculation:</strong>
                               </Typography>
                               <Typography variant="body2">
-                                Cost per {selling_unit_type || 'selling unit'}: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+                                Cost per {selling_unit_type || 'selling unit'}: {orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
                               </Typography>
                               <Typography variant="body2">
-                                Profit per {selling_unit_type || 'selling unit'}: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+                                Profit per {selling_unit_type || 'selling unit'}: {retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
                               </Typography>
                               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                 Profit Margin: {calculatedProfitMargin !== null ? `${(calculatedProfitMargin * 100).toFixed(1)}%` : 'N/A'}
@@ -712,7 +876,7 @@ const AddUnit = () => {
                           </TextField>
                         </Grid>
                         <Grid item xs={12}>
-                          <TextField
+                          {/* <TextField
                             label={unitCategory === 'buying' ? "Current Retail Price of Existing Selling Unit" : "Current Order Price of Existing Buying Unit"}
                             variant="outlined"
                             fullWidth
@@ -724,10 +888,10 @@ const AddUnit = () => {
                                 setRetailPrice(e.target.value);
                               } else {
                                 setOrderPrice(e.target.value);
-                              }
+                              } 
                             }}
                             helperText={`Price per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selected unit'}`}
-                          />
+                          /> */}
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
@@ -760,14 +924,14 @@ const AddUnit = () => {
                               </Typography>
                               <Typography variant="body2">
                                 {unitCategory === 'buying' 
-                                  ? `Cost per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: $${retailPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
-                                  : `Cost per ${newUnitType}: $${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  ? `Cost per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: ${retailPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  : `Cost per ${newUnitType}: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
                                 }
                               </Typography>
                               <Typography variant="body2">
                                 {unitCategory === 'buying'
-                                  ? `Profit per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: $${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
-                                  : `Profit per ${newUnitType}: $${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  ? `Profit per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selling unit'}: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
+                                  : `Profit per ${newUnitType}: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}`
                                 }
                               </Typography>
                               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
@@ -821,18 +985,18 @@ const AddUnit = () => {
               <>
                 New Unit Type: {newUnitType} ({unitCategory})<br />
                 Existing Unit: {existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type} ({existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_category})<br />
-                {unitCategory === 'buying' ? 'Order' : 'Retail'} Price (New Unit): ${unitCategory === 'buying' ? orderPrice : retailPrice}<br />
-                {unitCategory === 'buying' ? 'Retail' : 'Order'} Price (Existing Unit): ${unitCategory === 'buying' ? retailPrice : orderPrice}<br />
+                {unitCategory === 'buying' ? 'Order' : 'Retail'} Price (New Unit): {unitCategory === 'buying' ? orderPrice : retailPrice}<br />
+                {unitCategory === 'buying' ? 'Retail' : 'Order'} Price (Existing Unit): {unitCategory === 'buying' ? retailPrice : orderPrice}<br />
               </>
             ) : (
               <>
-                Retail Price: ${retailPrice}<br />
-                Order Price: ${orderPrice}<br />
+                Retail Price: {retailPrice}<br />
+                Order Price: {orderPrice}<br />
               </>
             )}
             Conversion Rate: {conversionRate}<br />
-            Cost per Selling Unit: ${orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}<br />
-            Profit per Unit: ${retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
+            Cost per Selling Unit: {orderPrice && conversionRate ? (parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}<br />
+            Profit per Unit: {retailPrice && orderPrice && conversionRate ? (parseFloat(retailPrice) - parseFloat(orderPrice) / parseFloat(conversionRate)).toFixed(2) : 'N/A'}
             <br /><br />
             Would you like to proceed anyway or update the conversion rate?
           </DialogContentText>

@@ -1,31 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../AxiosInstance';
-import {
-  Container,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
+import { 
+  Container, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper, 
   Typography,
   TablePagination,
   Button,
-  Snackbar,
-  MenuItem,
-  Select,
-  FormControl,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Alert, // Use Alert instead of MuiAlert
+  TextField,
+  MenuItem,
+  Select,
+  FormControl,
+  Snackbar,
+  Box,
+  Link,
+  Alert
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
-// Styled Table Cell for table headers
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   backgroundColor: theme.palette.primary.dark,
   color: theme.palette.common.white,
@@ -42,12 +44,14 @@ const ViewInventories = () => {
   const [inventories, setInventories] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [editLimitOpen, setEditLimitOpen] = useState(false);
+  const [editInventory, setEditInventory] = useState({});
   const [openSuccessSnackbar, setOpenSuccessSnackbar] = useState(false);
   const [openErrorSnackbar, setOpenErrorSnackbar] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // For delete confirmation dialog
-  const [inventoryToDelete, setInventoryToDelete] = useState(null); // Inventory to delete
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [inventoryToDelete, setInventoryToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,6 +61,9 @@ const ViewInventories = () => {
         const inventoriesWithOriginalUnits = response.data.map((inventory) => ({
           ...inventory,
           originalUnitType: inventory.unit_type,
+          originalStockLimit: inventory.stock_limit, // Store original stock_limit
+          originalUnitId: inventory.unit_id, // Store original unit_id
+          currentLimitUnitId: inventory.unit_id, // Track which unit the current limit is set in
         }));
         setInventories(inventoriesWithOriginalUnits);
       } catch (error) {
@@ -99,6 +106,14 @@ const ViewInventories = () => {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleUpdateLimitClick = (inventory) => {
+    setEditInventory({
+      ...inventory,
+      stock_limit: inventory.stock_limit || 0
+    });
+    setEditLimitOpen(true);
   };
 
   const confirmDelete = (inventory) => {
@@ -144,18 +159,38 @@ const ViewInventories = () => {
     if (!inventory) return;
 
     try {
-      const response = await axiosInstance.post('/inventories/convert', {
+      // Convert current stock
+      const stockResponse = await axiosInstance.post('/inventories/convert', {
         quantity: inventory.current_stock,
         fromUnitId: inventory.unit_id,
         toUnitId: toUnitId,
       });
 
-      const { convertedQuantity } = response.data;
+      // Convert stock limit (reminder limit) from current unit to selected unit
+      const limitResponse = await axiosInstance.post('/inventories/convert', {
+        quantity: inventory.stock_limit, // Use current stock_limit for conversion
+        fromUnitId: inventory.currentLimitUnitId, // Use current unit_id for conversion
+        toUnitId: toUnitId,
+      });
+
+      const { convertedQuantity } = stockResponse.data;
+      const { convertedQuantity: convertedStockLimit } = limitResponse.data;
+
+      // Find the new unit type from available_units
+      const newUnit = inventory.available_units.find(unit => unit.unit_id === toUnitId);
+      const newUnitType = newUnit ? newUnit.unit_type : inventory.unit_type;
 
       setInventories(
         inventories.map((inv) =>
           inv.inventory_id === inventoryId
-            ? { ...inv, current_stock: convertedQuantity, unit_id: toUnitId }
+            ? { 
+                ...inv, 
+                current_stock: convertedQuantity, 
+                stock_limit: convertedStockLimit,
+                unit_id: toUnitId,
+                unit_type: newUnitType, // Update the unit_type as well
+                currentLimitUnitId: toUnitId // Update the currentLimitUnitId
+              }
             : inv
         )
       );
@@ -166,6 +201,37 @@ const ViewInventories = () => {
       setErrorMessage('Error converting units. Please try again.');
       setOpenErrorSnackbar(true);
       console.error('Error converting units:', error);
+    }
+  };
+
+  const handleLimitChange = (event) => {
+    const { value } = event.target;
+    setEditInventory({ ...editInventory, stock_limit: value });
+  };
+
+  const handleLimitSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      // Update the stock limit via API
+      await axiosInstance.put(`/inventories/${editInventory.inventory_id}/limit`, {
+        stock_limit: editInventory.stock_limit,
+        unit_id: editInventory.unit_id // Send the unit_id to the backend
+      });
+      
+      // Update the local state
+      const updatedInventories = inventories.map(inv =>
+        inv.inventory_id === editInventory.inventory_id 
+          ? { ...inv, stock_limit: editInventory.stock_limit, currentLimitUnitId: editInventory.unit_id }
+          : inv
+      );
+      setInventories(updatedInventories);
+      setEditLimitOpen(false);
+      setOpenSuccessSnackbar(true);
+      setErrorMessage('Reminder limit updated successfully.');
+    } catch (error) {
+      console.error('Error updating reminder limit:', error);
+      setErrorMessage('Error updating reminder limit.');
+      setOpenErrorSnackbar(true);
     }
   };
 
@@ -183,12 +249,10 @@ const ViewInventories = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <StyledTableCell>Shop Name</StyledTableCell>
               <StyledTableCell>Product Name</StyledTableCell>
               <StyledTableCell>Current Stock</StyledTableCell>
               <StyledTableCell>Unit Type</StyledTableCell>
               <StyledTableCell>Reminder Limit</StyledTableCell>
-              <StyledTableCell>Limit Unit Type</StyledTableCell>
               <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
@@ -197,7 +261,6 @@ const ViewInventories = () => {
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((inventory) => (
                 <TableRow key={inventory.inventory_id}>
-                  <TableCell>{inventory.shop_name}</TableCell>
                   <TableCell>{`${inventory.product_name} - ${inventory.variety}`}</TableCell>
                   <TableCell>
                     {typeof inventory.current_stock === 'number'
@@ -224,15 +287,34 @@ const ViewInventories = () => {
                       </Select>
                     </FormControl>
                   </TableCell>
-                  <TableCell>{inventory.stock_limit}</TableCell>
-                  <TableCell>{inventory.originalUnitType}</TableCell>
+                  <TableCell>{Math.ceil(inventory.stock_limit)}</TableCell>
                   <TableCell>
-                    <Button color="secondary" onClick={() => confirmDelete(inventory)}>
-                      Delete
+                    <Button 
+                      color="secondary" 
+                      onClick={() => confirmDelete(inventory)}
+                      sx={{ mr: 1 }}
+                    >
+                      DELETE
                     </Button>
-                    <Button color="primary" onClick={() => handleReconcileClick(inventory.inventory_id)}>
-                      Reconcile
+                    <Button 
+                      color="primary" 
+                      onClick={() => handleReconcileClick(inventory.inventory_id)}
+                      sx={{ mr: 1 }}
+                    >
+                      SET CURRENT STOCK
                     </Button>
+                    <Link
+                      component="button"
+                      variant="body2"
+                      onClick={() => handleUpdateLimitClick(inventory)}
+                      sx={{ 
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        color: 'primary.main'
+                      }}
+                    >
+                      UPDATE LIMIT
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))}
@@ -248,20 +330,40 @@ const ViewInventories = () => {
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
-      <Snackbar
-        open={openSuccessSnackbar || openErrorSnackbar}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert
-          elevation={6}
-          variant="filled"
-          onClose={handleCloseSnackbar}
-          severity={openSuccessSnackbar ? 'success' : 'error'}
-        >
-          {errorMessage}
-        </Alert>
-      </Snackbar>
+
+      {/* Dialog for updating reminder limit */}
+      <Dialog open={editLimitOpen} onClose={() => setEditLimitOpen(false)}>
+        <DialogTitle>Update Reminder Limit</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Product: {editInventory.product_name}
+              {editInventory.variety && ` - ${editInventory.variety}`}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Current unit: {editInventory.unit_type}
+            </Typography>
+            <TextField
+              label="Reminder Limit"
+              type="number"
+              value={editInventory.stock_limit || 0}
+              onChange={handleLimitChange}
+              fullWidth
+              margin="normal"
+              helperText={`Set the minimum stock level in ${editInventory.unit_type} to trigger low inventory alerts`}
+              inputProps={{ min: 0, step: "0.01" }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditLimitOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleLimitSubmit} color="primary" variant="contained">
+            Update Limit
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Confirmation Dialog for Deletion */}
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
@@ -280,6 +382,21 @@ const ViewInventories = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={openSuccessSnackbar || openErrorSnackbar}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert
+          elevation={6}
+          variant="filled"
+          onClose={handleCloseSnackbar}
+          severity={openSuccessSnackbar ? 'success' : 'error'}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

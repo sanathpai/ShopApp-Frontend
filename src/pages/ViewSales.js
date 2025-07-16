@@ -114,6 +114,7 @@ const ViewSales = () => {
                 </Typography>
                 <Typography color="text.secondary">Variety: {sale.variety}</Typography>
                 <Typography color="text.secondary">Retail Price: {sale.retail_price}</Typography>
+                <Typography color="text.secondary">Discount: {sale.discount || 0}</Typography>
                 <Typography color="text.secondary">Quantity: {sale.quantity}</Typography>
                 <Typography color="text.secondary">Unit: {sale.unit_type}</Typography>
                 <Typography color="text.secondary">
@@ -179,6 +180,7 @@ const ViewSales = () => {
               <DialogContentText>Product Name: {selectedSale.product_name}</DialogContentText>
               <DialogContentText>Variety: {selectedSale.variety}</DialogContentText>
               <DialogContentText>Retail Price: ${selectedSale.retail_price}</DialogContentText>
+              <DialogContentText>Discount: ${selectedSale.discount || 0}</DialogContentText>
               <DialogContentText>Quantity: {selectedSale.quantity}</DialogContentText>
               <DialogContentText>
                 Sale Date: {new Date(selectedSale.sale_date).toLocaleDateString()}
