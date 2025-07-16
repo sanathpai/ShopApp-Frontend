@@ -222,7 +222,6 @@ const AddSale = () => {
           onBlur={handleProductNameBlur}
           onFocus={handleProductNameFocus}
           required
-          helperText="Start typing to search products..."
         />
         <List>
           {searchResults.map((product, resultIndex) => (

@@ -351,7 +351,6 @@ const CustomerTransaction = () => {
           onBlur={() => handleProductNameBlur(index)}
           onFocus={() => handleProductNameFocus(index)}
           required
-          helperText="Start typing to search products..."
         />
         <List>
           {searchResults[index] && searchResults[index].map((product, resultIndex) => (
