@@ -12,7 +12,8 @@ import {
   Snackbar,
   Alert,
   FormControlLabel,
-  Switch
+  Switch,
+  CircularProgress
 } from '@mui/material';
 import axiosInstance from '../AxiosInstance';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -31,47 +32,60 @@ const EditUnit = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [loading, setLoading] = useState(true);
 
   // Fetch the data for the product list and unit details
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchAllData = async () => {
       try {
-        const response = await axiosInstance.get('/products');
-        setProducts(response.data);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      }
-    };
+        setLoading(true);
+        
+        // Fetch products and unit details in parallel
+        const [productsResponse, unitResponse] = await Promise.all([
+          axiosInstance.get('/products'),
+          axiosInstance.get(`/units/${id}`)
+        ]);
 
-    const fetchUnitDetails = async () => {
-      try {
-        const response = await axiosInstance.get(`/units/${id}`);
-        const unit = response.data;
-    
+        const unit = unitResponse.data;
         console.log('Fetched unit details:', unit);
-    
-        if (unit) {
+
+        // Set products first
+        setProducts(productsResponse.data);
+
+        if (unit && unit.product_id) {
+          // Fetch existing units for the specific product
+          const unitsResponse = await axiosInstance.get(`/units/product/${unit.product_id}`);
+          setExistingUnits(unitsResponse.data);
+
+          // Now set all the form values after we have all the data
           setProductId(unit.product_id || '');
           setUnitType(unit.unit_type || '');
-          setOppositeUnitId(unit.opposite_unit_id || ''); // Store the opposite unit ID
+          setOppositeUnitId(unit.opposite_unit_id || '');
           setConversionRate(unit.conversion_factor || '');
         }
+
+        setLoading(false);
       } catch (error) {
-        console.error('Error fetching unit details:', error);
+        console.error('Error fetching data:', error);
+        setSnackbarMessage('Error fetching unit details');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        setLoading(false);
       }
     };
 
-    fetchProducts();
-    fetchUnitDetails();
+    fetchAllData();
   }, [id]);
 
-  // Fetch existing units for the selected product
+  // Fetch existing units when product changes (for when user manually changes product)
   useEffect(() => {
-    if (product_id) {
+    if (product_id && !loading) {
       const fetchExistingUnits = async () => {
         try {
           const response = await axiosInstance.get(`/units/product/${product_id}`);
           setExistingUnits(response.data);
+          // Reset opposite unit selection when product changes
+          setOppositeUnitId('');
         } catch (error) {
           console.error('Error fetching existing units:', error);
         }
@@ -79,7 +93,7 @@ const EditUnit = () => {
 
       fetchExistingUnits();
     }
-  }, [product_id]);
+  }, [product_id, loading]);
 
   // Handle form submission
   const handleFormSubmit = async (e) => {
@@ -117,6 +131,18 @@ const EditUnit = () => {
     setSnackbarOpen(false);
   };
 
+  // Helper function to format product display
+  const formatProductDisplay = (product) => {
+    let display = product.product_name;
+    if (product.variety && product.variety !== 'undefined' && product.variety !== 'null') {
+      display += ` - ${product.variety}`;
+    }
+    if (product.brand && product.brand !== 'undefined' && product.brand !== 'null') {
+      display += ` (${product.brand})`;
+    }
+    return display;
+  };
+
   return (
     <Container maxWidth="md">
       <Box sx={{ mt: 4 }}>
@@ -125,78 +151,85 @@ const EditUnit = () => {
         </Typography>
         <Card>
           <CardContent>
-            <form onSubmit={handleFormSubmit}>
-              <Grid container spacing={2}>
-                {/* Select Product */}
-                <Grid item xs={12}>
-                  <TextField
-                    select
-                    label="Select Product"
-                    variant="outlined"
-                    fullWidth
-                    value={product_id}
-                    onChange={(e) => setProductId(e.target.value)}
-                    required
-                  >
-                    {products.map((product) => (
-                      <MenuItem key={product.product_id} value={product.product_id}>
-                        {`${product.product_name} - ${product.variety}`}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <form onSubmit={handleFormSubmit}>
+                <Grid container spacing={2}>
+                  {/* Select Product */}
+                  <Grid item xs={12}>
+                    <TextField
+                      select
+                      label="Select Product"
+                      variant="outlined"
+                      fullWidth
+                      value={product_id}
+                      onChange={(e) => setProductId(e.target.value)}
+                      required
+                    >
+                      {products.map((product) => (
+                        <MenuItem key={product.product_id} value={product.product_id}>
+                          {formatProductDisplay(product)}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
 
-                {/* Unit Type */}
-                <Grid item xs={12}>
-                  <TextField
-                    label="Unit Type"
-                    variant="outlined"
-                    fullWidth
-                    value={unit_type}
-                    onChange={(e) => setUnitType(e.target.value)}
-                    required
-                  />
-                </Grid>
+                  {/* Unit Type */}
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Unit Type"
+                      variant="outlined"
+                      fullWidth
+                      value={unit_type}
+                      onChange={(e) => setUnitType(e.target.value)}
+                      required
+                    />
+                  </Grid>
 
-                {/* Dropdown for selecting existing units */}
-                <Grid item xs={12}>
-                  <TextField
-                    select
-                    label="Select Opposite Unit"
-                    variant="outlined"
-                    fullWidth
-                    value={opposite_unit_id}
-                    onChange={(e) => setOppositeUnitId(e.target.value)}
-                    required
-                  >
-                    {existingUnits.map((unit) => (
-                      <MenuItem key={unit.unit_id} value={unit.unit_id}>
-                        {unit.unit_type} ({unit.unit_category})
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
+                  {/* Dropdown for selecting existing units */}
+                  <Grid item xs={12}>
+                    <TextField
+                      select
+                      label="Select Comparison Unit" /*opposite unit*/
+                      variant="outlined"
+                      fullWidth
+                      value={opposite_unit_id}
+                      onChange={(e) => setOppositeUnitId(e.target.value)}
+                      required
+                      disabled={!existingUnits.length}
+                    >
+                      {existingUnits.map((unit) => (
+                        <MenuItem key={unit.unit_id} value={unit.unit_id}>
+                          {unit.unit_type} ({unit.unit_category})
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
 
-                {/* Conversion Rate */}
-                <Grid item xs={12}>
-                  <TextField
-                    label={`How many ${existingUnits.find(unit => unit.unit_id === opposite_unit_id)?.unit_type || 'selected unit type'} are there in ${unit_type || 'current unit type'}?`}
-                    variant="outlined"
-                    fullWidth
-                    value={conversionRate}
-                    onChange={(e) => setConversionRate(e.target.value)}
-                    required
-                  />
-                </Grid>
+                  {/* Conversion Rate */}
+                  <Grid item xs={12}>
+                    <TextField
+                      label={`How many ${existingUnits.find(unit => unit.unit_id === opposite_unit_id)?.unit_type || 'selected unit type'} are there in ${unit_type || 'current unit type'}?`}
+                      variant="outlined"
+                      fullWidth
+                      value={conversionRate}
+                      onChange={(e) => setConversionRate(e.target.value)}
+                      required
+                    />
+                  </Grid>
 
-                {/* Submit Button */}
-                <Grid item xs={12}>
-                  <Button type="submit" variant="contained" color="primary">
-                    Update Unit
-                  </Button>
+                  {/* Submit Button */}
+                  <Grid item xs={12}>
+                    <Button type="submit" variant="contained" color="primary">
+                      Update Unit
+                    </Button>
+                  </Grid>
                 </Grid>
-              </Grid>
-            </form>
+              </form>
+            )}
           </CardContent>
         </Card>
       </Box>

@@ -183,12 +183,10 @@ const ViewInventories = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <StyledTableCell>Shop Name</StyledTableCell>
               <StyledTableCell>Product Name</StyledTableCell>
               <StyledTableCell>Current Stock</StyledTableCell>
               <StyledTableCell>Unit Type</StyledTableCell>
               <StyledTableCell>Reminder Limit</StyledTableCell>
-              <StyledTableCell>Limit Unit Type</StyledTableCell>
               <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
@@ -197,7 +195,6 @@ const ViewInventories = () => {
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((inventory) => (
                 <TableRow key={inventory.inventory_id}>
-                  <TableCell>{inventory.shop_name}</TableCell>
                   <TableCell>{`${inventory.product_name} - ${inventory.variety}`}</TableCell>
                   <TableCell>
                     {typeof inventory.current_stock === 'number'
@@ -225,7 +222,6 @@ const ViewInventories = () => {
                     </FormControl>
                   </TableCell>
                   <TableCell>{inventory.stock_limit}</TableCell>
-                  <TableCell>{inventory.originalUnitType}</TableCell>
                   <TableCell>
                     <Button color="secondary" onClick={() => confirmDelete(inventory)}>
                       Delete

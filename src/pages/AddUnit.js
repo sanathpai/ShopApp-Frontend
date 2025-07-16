@@ -876,7 +876,7 @@ const AddUnit = () => {
                           </TextField>
                         </Grid>
                         <Grid item xs={12}>
-                          <TextField
+                          {/* <TextField
                             label={unitCategory === 'buying' ? "Current Retail Price of Existing Selling Unit" : "Current Order Price of Existing Buying Unit"}
                             variant="outlined"
                             fullWidth
@@ -888,10 +888,10 @@ const AddUnit = () => {
                                 setRetailPrice(e.target.value);
                               } else {
                                 setOrderPrice(e.target.value);
-                              }
+                              } 
                             }}
                             helperText={`Price per ${existingUnits.find(unit => unit.unit_id === selectedExistingUnit)?.unit_type || 'selected unit'}`}
-                          />
+                          /> */}
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
