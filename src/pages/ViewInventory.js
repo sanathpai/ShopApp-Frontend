@@ -287,7 +287,7 @@ const ViewInventories = () => {
                       </Select>
                     </FormControl>
                   </TableCell>
-                  <TableCell>{inventory.stock_limit}</TableCell>
+                  <TableCell>{Math.ceil(inventory.stock_limit)}</TableCell>
                   <TableCell>
                     <Button 
                       color="secondary" 
