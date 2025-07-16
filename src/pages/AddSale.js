@@ -222,6 +222,7 @@ const AddSale = () => {
           onBlur={handleProductNameBlur}
           onFocus={handleProductNameFocus}
           required
+          helperText="Start typing to search products..."
         />
         <List>
           {searchResults.map((product, resultIndex) => (
@@ -320,7 +321,8 @@ const AddSale = () => {
         quantity: quantity,
         sale_date: saleDate,
         unit_id: selectedUnitId,  // Use the unit_id
-        unit_category: selectedUnit.unit_category // Include the unit_category
+        unit_category: selectedUnit.unit_category, // Include the unit_category
+        trans_id: `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}` // Generate unique transaction ID for single sales
       });
       setSnackbarMessage('Sale added successfully!');
       setSnackbarSeverity('success');

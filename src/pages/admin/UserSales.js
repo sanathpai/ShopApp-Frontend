@@ -46,6 +46,7 @@ const UserSales = () => {
               <TableCell>Retail Price</TableCell>
               <TableCell>Sale Date</TableCell>
               <TableCell>Unit Type</TableCell>
+              <TableCell>Transaction ID</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -59,11 +60,12 @@ const UserSales = () => {
                 <TableCell>{sale.retail_price}</TableCell>
                 <TableCell>{new Date(sale.sale_date).toLocaleDateString()}</TableCell>
                 <TableCell>{sale.unit_type}</TableCell>
+                <TableCell>{sale.trans_id || 'N/A'}</TableCell>
               </TableRow>
             ))}
             {sales.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center">No sales data available</TableCell>
+                <TableCell colSpan={9} align="center">No sales data available</TableCell>
               </TableRow>
             )}
           </TableBody>

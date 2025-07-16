@@ -32,6 +32,13 @@ import CloseIcon from '@mui/icons-material/Close';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../AxiosInstance';
 
+// Generate unique transaction ID
+const generateTransactionId = () => {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `TXN-${timestamp}-${random}`;
+};
+
 const CustomerTransaction = () => {
   const [products, setProducts] = useState([]);
   const [items, setItems] = useState([
@@ -61,6 +68,7 @@ const CustomerTransaction = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [showInventoryLink, setShowInventoryLink] = useState(false);
   const [inventoryLinkData, setInventoryLinkData] = useState(null);
+  const [currentTransactionId, setCurrentTransactionId] = useState(null);
   
   // Search functionality states (similar to AddProduct)
   const [searchResults, setSearchResults] = useState({});
@@ -163,6 +171,11 @@ const CustomerTransaction = () => {
     };
   }, []);
 
+  // Generate a new transaction ID when component mounts or when transaction is reset
+  useEffect(() => {
+    setCurrentTransactionId(generateTransactionId());
+  }, []);
+
   const handleProductChange = async (index, productId) => {
     console.log('🔧 handleProductChange called with:', { index, productId });
     
@@ -252,9 +265,12 @@ const CustomerTransaction = () => {
   // Handle product selection for searchable field
   const handleSelectProduct = (index, product) => {
     console.log('🔍 handleSelectProduct called with:', { index, product });
+    console.log('🔍 Current search results for index:', searchResults[index]);
+    console.log('🔍 Current items state:', items);
     
     // Clear any pending blur timeout
     if (blurTimeoutRef.current[index]) {
+      console.log('🔄 Clearing blur timeout in handleSelectProduct');
       clearTimeout(blurTimeoutRef.current[index]);
       blurTimeoutRef.current[index] = null;
     }
@@ -281,10 +297,15 @@ const CustomerTransaction = () => {
     handleProductChange(index, productId);
     
     // Clear search results for this item
-    setSearchResults(prev => ({
-      ...prev,
-      [index]: []
-    }));
+    console.log('🧹 Clearing search results for index:', index);
+    setSearchResults(prev => {
+      const updated = {
+        ...prev,
+        [index]: []
+      };
+      console.log('🧹 Updated search results:', updated);
+      return updated;
+    });
   };
 
   // Handle product name change for searchable field
@@ -306,19 +327,21 @@ const CustomerTransaction = () => {
 
   // Handle blur for searchable field
   const handleProductNameBlur = (index) => {
-    // Clear search results after a small delay to allow clicking on results
+    // Clear search results after a longer delay to allow clicking on results
     blurTimeoutRef.current[index] = setTimeout(() => {
+      console.log(`🔄 Clearing search results for index ${index} due to blur`);
       setSearchResults(prev => ({
         ...prev,
         [index]: []
       }));
-    }, 150);
+    }, 300); // Increased from 150ms to 300ms
   };
 
   // Handle focus for searchable field
   const handleProductNameFocus = (index) => {
     // Clear any pending blur timeout when field gets focus again
     if (blurTimeoutRef.current[index]) {
+      console.log(`🔄 Cancelling blur timeout for index ${index} due to focus`);
       clearTimeout(blurTimeoutRef.current[index]);
       blurTimeoutRef.current[index] = null;
     }
@@ -341,7 +364,7 @@ const CustomerTransaction = () => {
 
     // Always show searchable field once products are loaded
     return (
-      <Box>
+      <Box sx={{ position: 'relative' }}>
         <TextField
           label="Product name"
           variant="outlined"
@@ -351,21 +374,61 @@ const CustomerTransaction = () => {
           onBlur={() => handleProductNameBlur(index)}
           onFocus={() => handleProductNameFocus(index)}
           required
+          helperText="Start typing to search products..."
         />
-        <List>
-          {searchResults[index] && searchResults[index].map((product, resultIndex) => (
-            <ListItem 
-              button 
-              key={resultIndex} 
-              onClick={() => handleSelectProduct(index, product)}
-            >
-              <ListItemText 
-                primary={product.product_name}
-                secondary={`${product.brand ? `Brand: ${product.brand}` : 'No brand'}${product.variety ? ` | Variety: ${product.variety}` : ' | No variety'}${product.size ? ` | Size: ${product.size}` : ''}`}
-              />
-            </ListItem>
-          ))}
-        </List>
+        {searchResults[index] && searchResults[index].length > 0 && (
+          <Paper
+            sx={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              zIndex: 1000,
+              maxHeight: 200,
+              overflow: 'auto',
+              mt: 1,
+              border: '1px solid #e0e0e0',
+            }}
+            onMouseEnter={() => {
+              // Prevent blur timeout when hovering over results
+              if (blurTimeoutRef.current[index]) {
+                clearTimeout(blurTimeoutRef.current[index]);
+                blurTimeoutRef.current[index] = null;
+              }
+            }}
+          >
+            <List dense>
+              {searchResults[index].map((product, resultIndex) => (
+                <ListItem 
+                  button 
+                  key={resultIndex} 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`🖱️ Clicked on product: ${product.product_name} for index ${index}`);
+                    handleSelectProduct(index, product);
+                  }}
+                  onMouseDown={(e) => {
+                    // Prevent the TextField from losing focus on mousedown
+                    e.preventDefault();
+                  }}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5',
+                    },
+                    cursor: 'pointer',
+                    borderBottom: '1px solid #f0f0f0',
+                  }}
+                >
+                  <ListItemText 
+                    primary={product.product_name}
+                    secondary={`${product.brand ? `Brand: ${product.brand}` : 'No brand'}${product.variety ? ` | Variety: ${product.variety}` : ' | No variety'}${product.size ? ` | Size: ${product.size}` : ''}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        )}
       </Box>
     );
   };
@@ -490,6 +553,10 @@ const CustomerTransaction = () => {
     setGrandTotal(0);
     setShowInventoryLink(false);
     setInventoryLinkData(null);
+    
+    // Generate new transaction ID for next transaction
+    setCurrentTransactionId(generateTransactionId());
+    
     if (!preserveSnackbar) {
       setSnackbarOpen(false);
     }
@@ -554,14 +621,12 @@ const CustomerTransaction = () => {
   };
 
   const handleLogSales = async () => {
+    setOpenModal(false);
+    
     try {
-      console.log('🚀 Starting sales logging process...');
-      console.log('📋 Items to process:', items);
-      
-      // Reset states
-      setShowInventoryLink(false);
-      setInventoryLinkData(null);
-      setSnackbarOpen(false);
+      console.log('🛒 Starting customer transaction processing...');
+      console.log('🔖 Transaction ID:', currentTransactionId);
+      console.log('📦 Items to process:', items.length);
       
       for (const [index, item] of items.entries()) {
         console.log(`\n📦 Processing item ${index + 1}:`);
@@ -584,6 +649,7 @@ const CustomerTransaction = () => {
           sale_date: item.date,
           unit_id: item.unitId,
           unit_category: item.unitTypes.find((u) => u.id === item.unitId)?.category,
+          trans_id: currentTransactionId // Add the transaction ID to group all sales
         };
         
         console.log('📤 Sending sale data to backend:', saleData);
@@ -644,17 +710,17 @@ const CustomerTransaction = () => {
       }
       
       console.log('🎉 All sales logged successfully!');
+      console.log('🔖 Transaction completed with ID:', currentTransactionId);
       setOpenModal(false);
       handleReset(true); // Preserve snackbar when resetting after success
-      setSnackbarMessage('Sales logged successfully!');
+      setSnackbarMessage(`Customer transaction completed successfully! Transaction ID: ${currentTransactionId}`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('❌ Error logging sales:', error);
-      setSnackbarMessage(`Error logging sales: ${error.message}`);
+      console.error('❌ Error during transaction processing:', error.message);
+      setSnackbarMessage(`Error: ${error.message}`);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
-      setOpenModal(false);
     }
   };
 
