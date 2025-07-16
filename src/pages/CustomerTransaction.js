@@ -62,6 +62,7 @@ const CustomerTransaction = () => {
     },
   ]);
   const [grandTotal, setGrandTotal] = useState(0);
+  const [discount, setDiscount] = useState(0); // Add discount state
   const [openModal, setOpenModal] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -80,6 +81,13 @@ const CustomerTransaction = () => {
   const blurTimeoutRef = useRef({});
   
   const navigate = useNavigate();
+
+  // Effect to calculate grand total whenever items or discount change
+  useEffect(() => {
+    const total = items.reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
+    const discountedTotal = Math.max(0, total - parseFloat(discount || 0)); // Ensure total doesn't go below 0
+    setGrandTotal(discountedTotal);
+  }, [items, discount]);
 
   // Remove the products loading useEffect entirely since we only use search now
   // useEffect(() => {
@@ -551,6 +559,7 @@ const CustomerTransaction = () => {
       },
     ]);
     setGrandTotal(0);
+    setDiscount(0); // Reset discount
     setShowInventoryLink(false);
     setInventoryLinkData(null);
     
@@ -627,6 +636,10 @@ const CustomerTransaction = () => {
       console.log('🛒 Starting customer transaction processing...');
       console.log('🔖 Transaction ID:', currentTransactionId);
       console.log('📦 Items to process:', items.length);
+      console.log('💰 Total discount:', discount);
+      
+      // Calculate subtotal for proportional discount distribution
+      const subtotal = items.reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
       
       for (const [index, item] of items.entries()) {
         console.log(`\n📦 Processing item ${index + 1}:`);
@@ -640,6 +653,11 @@ const CustomerTransaction = () => {
         
         console.log('🔍 Using product details:', item.productDetails);
 
+        // Calculate proportional discount for this item
+        const itemTotal = parseFloat(item.total || 0);
+        const itemDiscountProportion = subtotal > 0 ? (itemTotal / subtotal) : 0;
+        const itemDiscount = parseFloat(discount || 0) * itemDiscountProportion;
+
         const saleData = {
           product_name: item.productDetails.product_name,
           variety: item.productDetails.variety,
@@ -649,7 +667,8 @@ const CustomerTransaction = () => {
           sale_date: item.date,
           unit_id: item.unitId,
           unit_category: item.unitTypes.find((u) => u.id === item.unitId)?.category,
-          trans_id: currentTransactionId // Add the transaction ID to group all sales
+          trans_id: currentTransactionId, // Add the transaction ID to group all sales
+          discount: itemDiscount.toFixed(2) // Add proportional discount for this item
         };
         
         console.log('📤 Sending sale data to backend:', saleData);
@@ -846,9 +865,21 @@ const CustomerTransaction = () => {
             Submit
           </Button>
         </Box>
-        <Typography variant="h5" align="right" sx={{ marginTop: 2 }}>
-          Grand Total: {grandTotal.toFixed(2)} ZMW
-        </Typography>
+        
+        {/* Discount and Grand Total Section */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: 2, gap: 2 }}>
+          <TextField
+            label="Discount (ZMW)"
+            type="number"
+            value={discount}
+            onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+            sx={{ width: '150px' }}
+            inputProps={{ min: 0, step: 0.01 }}
+          />
+          <Typography variant="h5">
+            Grand Total: {grandTotal.toFixed(2)} ZMW
+          </Typography>
+        </Box>
       </Paper>
 
       {/* Confirmation Modal */}
@@ -888,9 +919,21 @@ const CustomerTransaction = () => {
               </TableBody>
             </Table>
           </TableContainer>
-          <Typography variant="h6" align="right" sx={{ marginTop: 2, fontWeight: 'bold' }}>
-            Grand Total: {grandTotal.toFixed(2)} ZMW
-          </Typography>
+          
+          {/* Summary section showing subtotal, discount, and grand total */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: 2 }}>
+            <Typography variant="body1" sx={{ marginBottom: 1 }}>
+              Subtotal: {items.reduce((sum, item) => sum + parseFloat(item.total || 0), 0).toFixed(2)} ZMW
+            </Typography>
+            {discount > 0 && (
+              <Typography variant="body1" sx={{ marginBottom: 1, color: 'green' }}>
+                Discount: -{discount.toFixed(2)} ZMW
+              </Typography>
+            )}
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              Grand Total: {grandTotal.toFixed(2)} ZMW
+            </Typography>
+          </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-evenly', marginTop: 2, flexWrap: 'wrap' }}>
             <Button variant="contained" color="secondary" onClick={handleLogSales}>
               Log Sales

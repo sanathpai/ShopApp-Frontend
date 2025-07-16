@@ -30,6 +30,7 @@ const AddSale = () => {
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]); // Default to today's date
   const [selectedUnitId, setSelectedUnitId] = useState('');  // Updated to use unit_id instead of unit_type
   const [productDetails, setProductDetails] = useState('');
+  const [discount, setDiscount] = useState('0'); // Add discount state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -322,12 +323,14 @@ const AddSale = () => {
         sale_date: saleDate,
         unit_id: selectedUnitId,  // Use the unit_id
         unit_category: selectedUnit.unit_category, // Include the unit_category
+        discount: discount, // Add discount to the sale data
         trans_id: `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}` // Generate unique transaction ID for single sales
       });
       setSnackbarMessage('Sale added successfully!');
       setSnackbarSeverity('success');
       setRetailPrice('');
       setQuantity('');
+      setDiscount('0'); // Reset discount
       setSaleDate(new Date().toISOString().split('T')[0]); // Reset to today's date
       setSelectedUnitId('');
       setProductDetails('');
@@ -441,6 +444,16 @@ const AddSale = () => {
                     onChange={(e) => setQuantity(e.target.value)}
                     fullWidth
                     required
+                  />
+
+                  <TextField
+                    label="Discount (ZMW)"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(Math.max(0, e.target.value || 0))}
+                    fullWidth
+                    inputProps={{ min: 0, step: 0.01 }}
+                    helperText="Optional discount amount"
                   />
 
                   <TextField

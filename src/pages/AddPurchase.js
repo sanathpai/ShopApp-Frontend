@@ -36,6 +36,7 @@ const AddPurchase = () => {
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedUnitType, setSelectedUnitType] = useState('');
   const [productDetails, setProductDetails] = useState('');
+  const [discount, setDiscount] = useState('0'); // Add discount state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -259,7 +260,7 @@ const AddPurchase = () => {
           onBlur={handleProductNameBlur}
           onFocus={handleProductNameFocus}
           required
-      
+          helperText="Start typing to search products..."
         />
         <List>
           {searchResults.map((product, resultIndex) => (
@@ -323,6 +324,7 @@ const AddPurchase = () => {
         purchase_date: purchaseDate,
         unit_id: selectedUnit.id,
         unit_category: selectedUnit.unitCategory,
+        discount: discount, // Add discount to purchase data
       };
 
       console.log('🔍 DEBUG - Request data being sent to backend:', JSON.stringify(requestData, null, 2));
@@ -336,6 +338,7 @@ const AddPurchase = () => {
       setSnackbarSeverity('success');
       // setSelectedSource('');
       setOrderPrice('');
+      setDiscount('0'); // Reset discount
       setQuantity('');
       setPurchaseDate(new Date().toISOString().split('T')[0]);
       setSelectedUnitType('');
@@ -507,6 +510,16 @@ const AddPurchase = () => {
                     onChange={(e) => setOrderPrice(e.target.value)}
                     fullWidth
                     required
+                  />
+
+                  <TextField
+                    label="Discount (ZMW)"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(Math.max(0, e.target.value || 0))}
+                    fullWidth
+                    inputProps={{ min: 0, step: 0.01 }}
+                    helperText="Optional discount amount"
                   />
 
                   <TextField
