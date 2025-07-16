@@ -301,7 +301,7 @@ const ViewInventories = () => {
                       onClick={() => handleReconcileClick(inventory.inventory_id)}
                       sx={{ mr: 1 }}
                     >
-                      RECONCILE
+                      SET CURRENT STOCK
                     </Button>
                     <Link
                       component="button"
