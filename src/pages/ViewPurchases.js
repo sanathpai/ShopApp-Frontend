@@ -101,6 +101,7 @@ const ViewPurchases = () => {
               <StyledTableCell>Shop Name</StyledTableCell>
               <StyledTableCell>Product Name</StyledTableCell>
               <StyledTableCell>Order Price</StyledTableCell>
+              <StyledTableCell>Discount</StyledTableCell>
               <StyledTableCell>Quantity</StyledTableCell>
               <StyledTableCell>Unit</StyledTableCell>
               <StyledTableCell>Purchase Date</StyledTableCell>
@@ -113,6 +114,7 @@ const ViewPurchases = () => {
                 <TableCell>{purchase.shop_name}</TableCell>
                 <TableCell>{purchase.product_name}</TableCell>
                 <TableCell>{purchase.order_price}</TableCell>
+                <TableCell>{purchase.discount || 0}</TableCell>
                 <TableCell>{purchase.quantity}</TableCell>
                 <TableCell>{purchase.unit_type}</TableCell>
                 <TableCell>{new Date(purchase.purchase_date).toLocaleDateString()}</TableCell>
