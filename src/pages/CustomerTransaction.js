@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Select,
@@ -22,6 +22,9 @@ import {
   Snackbar,
   Alert,
   Link as MuiLink,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -58,69 +61,314 @@ const CustomerTransaction = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [showInventoryLink, setShowInventoryLink] = useState(false);
   const [inventoryLinkData, setInventoryLinkData] = useState(null);
+  
+  // Search functionality states (similar to AddProduct)
+  const [searchResults, setSearchResults] = useState({});
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [productsLoading, setProductsLoading] = useState(false); // Set to false since we don't load all products
+  
+  // Refs for search functionality
+  const justSelectedRef = useRef({});
+  const blurTimeoutRef = useRef({});
+  
   const navigate = useNavigate();
 
-  // Fetch products
+  // Remove the products loading useEffect entirely since we only use search now
+  // useEffect(() => {
+  //   const fetchProducts = async () => {
+  //     try {
+  //       setProductsLoading(true); // Set loading to true before fetching
+  //       const response = await axiosInstance.get('/products');
+  //       setProducts(response.data);
+  //     } catch (error) {
+  //       console.error('Error fetching products:', error);
+  //     } finally {
+  //       setProductsLoading(false); // Set loading to false after fetching
+  //     }
+  //   };
+  //   fetchProducts();
+  // }, []);
+
+  // Search functionality for products when there are more than 5
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axiosInstance.get('/products');
-        setProducts(response.data);
-      } catch (error) {
-        console.error('Error fetching products:', error);
+    const updateSearchResults = async () => {
+      const newSearchResults = {};
+      
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        const productSearchText = item.productName;
+        
+        // Enable search immediately without waiting for products.length check
+        if (productSearchText.length > 2 && isOnline && !justSelectedRef.current[index]) {
+          try {
+            console.log(`🔍 Searching for products with query: "${productSearchText}"`);
+            const response = await axiosInstance.get(`/products/search?q=${productSearchText}`);
+            console.log('🔍 Raw search response:', response.data);
+            
+            // Log the structure of the first result to understand the data format
+            if (response.data.length > 0) {
+              console.log('📦 First search result structure:', Object.keys(response.data[0]));
+              console.log('📦 First search result data:', response.data[0]);
+            }
+            
+            const uniqueResults = response.data.reduce((acc, product) => {
+              const key = `${product.product_name}-${product.variety || ''}-${product.brand || ''}`;
+              if (!acc[key]) {
+                acc[key] = product;
+              }
+              return acc;
+            }, {});
+            newSearchResults[index] = Object.values(uniqueResults);
+            console.log(`✅ Processed ${newSearchResults[index].length} unique results for item ${index}`);
+          } catch (error) {
+            console.error('❌ Error fetching search results:', error);
+            newSearchResults[index] = [];
+          }
+        } else {
+          newSearchResults[index] = [];
+        }
+        
+        // Reset the justSelected flag after the effect runs
+        if (justSelectedRef.current[index]) {
+          justSelectedRef.current[index] = false;
+        }
       }
+      
+      setSearchResults(newSearchResults);
     };
-    fetchProducts();
+
+    updateSearchResults();
+  }, [items, isOnline]); // Remove products.length dependency
+
+  // Network status handling
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      // Clear any pending blur timeouts
+      Object.values(blurTimeoutRef.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
   }, []);
 
   const handleProductChange = async (index, productId) => {
+    console.log('🔧 handleProductChange called with:', { index, productId });
+    
     const updatedItems = [...items];
-    const selectedProduct = products.find((product) => product.product_id === productId);
+    
+    try {
+      // Fetch the specific product by ID
+      const productResponse = await axiosInstance.get(`/products/${productId}`);
+      const selectedProduct = productResponse.data;
+      
+      console.log('🔍 Fetched product with ID:', productId);
+      console.log('🎯 Found product:', selectedProduct);
 
-    updatedItems[index] = {
-      ...updatedItems[index],
-      product: productId,
-      productName: selectedProduct ? formatProductDisplay(selectedProduct) : '',
-      // Store the actual product details for the backend
-      productDetails: selectedProduct ? {
-        product_name: selectedProduct.product_name,
-        variety: selectedProduct.variety || '',
-        brand: selectedProduct.brand || '',
-        size: selectedProduct.size || selectedProduct.description || '',
-      } : {
-        product_name: '',
-        variety: '',
-        brand: '',
-        size: '',
-      },
-      price: '',
-      unitId: '',
-      unitTypes: [],
-      unitType: '',
-      date: new Date().toISOString().split('T')[0],
-    };
+      updatedItems[index] = {
+        ...updatedItems[index],
+        product: productId,
+        productName: selectedProduct ? formatProductDisplay(selectedProduct) : '',
+        // Store the actual product details for the backend
+        productDetails: selectedProduct ? {
+          product_name: selectedProduct.product_name,
+          variety: selectedProduct.variety || '',
+          brand: selectedProduct.brand || '',
+          size: selectedProduct.size || selectedProduct.description || '',
+        } : {
+          product_name: '',
+          variety: '',
+          brand: '',
+          size: '',
+        },
+        price: '',
+        unitId: '',
+        unitTypes: [],
+        unitType: '',
+        date: new Date().toISOString().split('T')[0],
+      };
 
-    if (selectedProduct) {
-      try {
-        const unitsResponse = await axiosInstance.get(`/units/product/${productId}`);
-        // Filter for selling units only and remove category from display
-        const sellingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'selling');
-        updatedItems[index].unitTypes = sellingUnits.map((unit) => ({
-          id: unit.unit_id,
-          type: unit.unit_type, // Remove (selling) from display
-          category: unit.unit_category,
-        }));
-        // Comment out the old code that showed all units with category in parentheses
-        // updatedItems[index].unitTypes = unitsResponse.data.map((unit) => ({
-        //   id: unit.unit_id,
-        //   type: `${unit.unit_type} (${unit.unit_category})`,
-        //   category: unit.unit_category,
-        // }));
-      } catch (error) {
-        console.error('Error fetching units:', error);
+      console.log('📝 Updated item data:', updatedItems[index]);
+
+      if (selectedProduct) {
+        try {
+          console.log('🌐 Fetching units for product:', productId);
+          const unitsResponse = await axiosInstance.get(`/units/product/${productId}`);
+          console.log('📦 Units response:', unitsResponse.data);
+          
+          // Filter for selling units only and remove category from display
+          const sellingUnits = unitsResponse.data.filter(unit => unit.unit_category === 'selling');
+          console.log('🏷️ Filtered selling units:', sellingUnits);
+          
+          updatedItems[index].unitTypes = sellingUnits.map((unit) => ({
+            id: unit.unit_id,
+            type: unit.unit_type, // Remove (selling) from display
+            category: unit.unit_category,
+          }));
+          
+          console.log('✅ Final unit types for item:', updatedItems[index].unitTypes);
+        } catch (error) {
+          console.error('❌ Error fetching units:', error);
+        }
+      } else {
+        console.warn('⚠️ No product found with the given ID');
       }
+    } catch (error) {
+      console.error('❌ Error fetching product:', error);
+      // Set empty values if product fetch fails
+      updatedItems[index] = {
+        ...updatedItems[index],
+        product: '',
+        productName: '',
+        productDetails: {
+          product_name: '',
+          variety: '',
+          brand: '',
+          size: '',
+        },
+        price: '',
+        unitId: '',
+        unitTypes: [],
+        unitType: '',
+        date: new Date().toISOString().split('T')[0],
+      };
     }
+    
+    console.log('💾 Setting items with updated data');
     setItems(updatedItems);
+  };
+
+  // Handle product selection for searchable field
+  const handleSelectProduct = (index, product) => {
+    console.log('🔍 handleSelectProduct called with:', { index, product });
+    
+    // Clear any pending blur timeout
+    if (blurTimeoutRef.current[index]) {
+      clearTimeout(blurTimeoutRef.current[index]);
+      blurTimeoutRef.current[index] = null;
+    }
+    
+    justSelectedRef.current[index] = true; // Set flag to prevent immediate search
+    
+    // Check if product has the expected fields
+    console.log('📦 Product object structure:', Object.keys(product));
+    console.log('🔑 Product ID:', product.product_id);
+    
+    // Use the product_id directly from search results (now included in API response)
+    const productId = product.product_id;
+    
+    if (!productId) {
+      console.error('❌ Product missing ID field:', product);
+      setSnackbarMessage('Error: Product selection failed - missing ID');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    // Update the item with selected product
+    console.log('✅ Calling handleProductChange with productId:', productId);
+    handleProductChange(index, productId);
+    
+    // Clear search results for this item
+    setSearchResults(prev => ({
+      ...prev,
+      [index]: []
+    }));
+  };
+
+  // Handle product name change for searchable field
+  const handleProductNameChange = (index, value) => {
+    const updatedItems = [...items];
+    updatedItems[index].productName = value;
+    updatedItems[index].product = '';
+    updatedItems[index].productDetails = {
+      product_name: '',
+      variety: '',
+      brand: '',
+      size: '',
+    };
+    updatedItems[index].unitTypes = [];
+    updatedItems[index].unitId = '';
+    updatedItems[index].price = '';
+    setItems(updatedItems);
+  };
+
+  // Handle blur for searchable field
+  const handleProductNameBlur = (index) => {
+    // Clear search results after a small delay to allow clicking on results
+    blurTimeoutRef.current[index] = setTimeout(() => {
+      setSearchResults(prev => ({
+        ...prev,
+        [index]: []
+      }));
+    }, 150);
+  };
+
+  // Handle focus for searchable field
+  const handleProductNameFocus = (index) => {
+    // Clear any pending blur timeout when field gets focus again
+    if (blurTimeoutRef.current[index]) {
+      clearTimeout(blurTimeoutRef.current[index]);
+      blurTimeoutRef.current[index] = null;
+    }
+  };
+
+  // Render product selection component based on product count
+  const renderProductSelection = (item, index) => {
+    // Show loading state while products are being fetched
+    if (productsLoading) {
+      return (
+        <TextField
+          label="Loading products..."
+          variant="outlined"
+          fullWidth
+          disabled
+          helperText="Please wait while products are being loaded..."
+        />
+      );
+    }
+
+    // Always show searchable field once products are loaded
+    return (
+      <Box>
+        <TextField
+          label="Product name"
+          variant="outlined"
+          fullWidth
+          value={item.productName}
+          onChange={(e) => handleProductNameChange(index, e.target.value)}
+          onBlur={() => handleProductNameBlur(index)}
+          onFocus={() => handleProductNameFocus(index)}
+          required
+          helperText="Start typing to search products..."
+        />
+        <List>
+          {searchResults[index] && searchResults[index].map((product, resultIndex) => (
+            <ListItem 
+              button 
+              key={resultIndex} 
+              onClick={() => handleSelectProduct(index, product)}
+            >
+              <ListItemText 
+                primary={product.product_name}
+                secondary={`${product.brand ? `Brand: ${product.brand}` : 'No brand'}${product.variety ? ` | Variety: ${product.variety}` : ' | No variety'}${product.size ? ` | Size: ${product.size}` : ''}`}
+              />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
+    );
   };
 
   const handleInputChange = (index, field, value) => {
@@ -210,6 +458,16 @@ const CustomerTransaction = () => {
   };
 
   const handleReset = (preserveSnackbar = false) => {
+    // Clear all search state
+    setSearchResults({});
+    
+    // Clear all timeouts
+    Object.values(blurTimeoutRef.current).forEach(timeout => {
+      if (timeout) clearTimeout(timeout);
+    });
+    blurTimeoutRef.current = {};
+    justSelectedRef.current = {};
+    
     setItems([
       {
         product: '',
@@ -240,8 +498,38 @@ const CustomerTransaction = () => {
 
   const handleDeleteItem = (index) => {
     if (items.length > 1) {
+      // Clean up search state for the deleted item
+      if (blurTimeoutRef.current[index]) {
+        clearTimeout(blurTimeoutRef.current[index]);
+        delete blurTimeoutRef.current[index];
+      }
+      delete justSelectedRef.current[index];
+      
+      // Remove the item
       const updatedItems = items.filter((_, i) => i !== index);
       setItems(updatedItems);
+
+      // Clean up search results - re-index remaining items
+      const newSearchResults = {};
+      const newBlurTimeouts = {};
+      const newJustSelected = {};
+      
+      updatedItems.forEach((_, i) => {
+        const oldIndex = i >= index ? i + 1 : i;
+        if (searchResults[oldIndex]) {
+          newSearchResults[i] = searchResults[oldIndex];
+        }
+        if (blurTimeoutRef.current[oldIndex]) {
+          newBlurTimeouts[i] = blurTimeoutRef.current[oldIndex];
+        }
+        if (justSelectedRef.current[oldIndex]) {
+          newJustSelected[i] = justSelectedRef.current[oldIndex];
+        }
+      });
+      
+      setSearchResults(newSearchResults);
+      blurTimeoutRef.current = newBlurTimeouts;
+      justSelectedRef.current = newJustSelected;
 
       const totalSum = updatedItems.reduce((sum, item) => sum + item.total, 0);
       setGrandTotal(totalSum);
@@ -414,16 +702,7 @@ const CustomerTransaction = () => {
         {items.map((item, index) => (
           <Grid container spacing={2} key={index} alignItems="center">
             <Grid item xs={12} sm={3}>
-              <FormControl fullWidth required>
-                <InputLabel>Product</InputLabel>
-                <Select value={item.product} onChange={(e) => handleProductChange(index, e.target.value)}>
-                  {products.map((product) => (
-                    <MenuItem key={product.product_id} value={product.product_id}>
-                      {formatProductDisplay(product)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {renderProductSelection(item, index)}
             </Grid>
             <Grid item xs={6} sm={2}>
               <FormControl fullWidth required>
