@@ -107,8 +107,7 @@ const AddInventory = () => {
 
     try {
       const inventoryData = {
-        product_name: productInfo.name,
-        variety: productInfo.variety || '',
+        product_id: productInfo.id, // Use product_id directly instead of name/variety lookup
         current_stock: parseFloat(currentStock),
         stock_limit: parseFloat(stockLimit),
         unit_id: parseInt(unitId)
