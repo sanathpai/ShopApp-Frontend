@@ -103,8 +103,8 @@ const ViewProductOfferings = () => {
                 <TableCell>{offering.shop_name}</TableCell>
                 <TableCell>
                   {offering.product_name}
-                  {offering.variety && ` - ${offering.variety}`}
                   {offering.brand && ` (${offering.brand})`}
+                  {(offering.variety || offering.size) && ` - ${[offering.variety, offering.size].filter(Boolean).join(', ')}`}
                 </TableCell>
                 <TableCell>{offering.unit_size}</TableCell>
                 <TableCell>{offering.buying_unit_type}</TableCell>

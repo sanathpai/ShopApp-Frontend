@@ -261,7 +261,11 @@ const ViewInventories = () => {
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((inventory) => (
                 <TableRow key={inventory.inventory_id}>
-                  <TableCell>{`${inventory.product_name} - ${inventory.variety}`}</TableCell>
+                  <TableCell>
+                    {inventory.product_name}
+                    {inventory.brand && ` (${inventory.brand})`}
+                    {(inventory.variety || inventory.size) && ` - ${[inventory.variety, inventory.size].filter(Boolean).join(', ')}`}
+                  </TableCell>
                   <TableCell>
                     {typeof inventory.current_stock === 'number'
                       ? inventory.current_stock.toFixed(2)

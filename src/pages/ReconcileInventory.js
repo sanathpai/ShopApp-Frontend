@@ -69,7 +69,7 @@ const ReconcileInventory = () => {
             variant="outlined"
             fullWidth
             margin="normal"
-            value={`${inventory.product_name || ''} - ${inventory.variety || ''}`}
+            value={`${inventory.product_name || ''}${inventory.brand ? ` (${inventory.brand})` : ''}${(inventory.variety || inventory.size) ? ` - ${[inventory.variety, inventory.size].filter(Boolean).join(', ')}` : ''}`}
             disabled
           />
           {/* Current Stock */}
