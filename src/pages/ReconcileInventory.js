@@ -29,8 +29,8 @@ const ReconcileInventory = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isNaN(actualStock) || actualStock === '' || parseFloat(actualStock) < 0) {
-      setSnackbarMessage('Please enter a valid positive stock number (negative values not allowed)');
+    if (isNaN(actualStock) || actualStock === '') {
+      setSnackbarMessage('Please enter a valid stock number');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
       return;
@@ -69,7 +69,7 @@ const ReconcileInventory = () => {
             variant="outlined"
             fullWidth
             margin="normal"
-            value={`${inventory.product_name || ''}${inventory.brand ? ` (${inventory.brand})` : ''}${(inventory.variety || inventory.size) ? ` - ${[inventory.variety, inventory.size].filter(Boolean).join(', ')}` : ''}`}
+            value={`${inventory.product_name || ''} - ${inventory.variety || ''}`}
             disabled
           />
           {/* Current Stock */}
