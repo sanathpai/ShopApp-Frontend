@@ -29,8 +29,8 @@ const ReconcileInventory = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isNaN(actualStock) || actualStock === '') {
-      setSnackbarMessage('Please enter a valid stock number');
+    if (isNaN(actualStock) || actualStock === '' || parseFloat(actualStock) < 0) {
+      setSnackbarMessage('Please enter a valid positive stock number (negative values not allowed)');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
       return;
