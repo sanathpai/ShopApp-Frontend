@@ -524,10 +524,10 @@ const AddProduct = () => {
 
     try {
       const productData = {
-        product_name: productName,
-        variety,
-        brand: brand || null, // Send null if brand is empty
-        size,
+        product_name: productName.trim(),
+        variety: variety.trim(),
+        brand: brand?.trim() || null, // Send null if brand is empty
+        size: size.trim(),
       };
 
       // Include image data if captured
