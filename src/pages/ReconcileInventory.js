@@ -36,6 +36,14 @@ const ReconcileInventory = () => {
       return;
     }
 
+    // Prevent negative inventory values
+    if (parseFloat(actualStock) < 0) {
+      setSnackbarMessage('Stock cannot be negative. Please enter a positive number or zero.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+
     try {
       await axiosInstance.post(`/inventories/reconcile/${id}`, {
         actual_stock: actualStock,
