@@ -17,6 +17,7 @@ import {
   Modal,
   Divider,
 } from '@mui/material';
+import InsightsNotificationBox from '../components/InsightsNotificationBox';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -309,6 +310,9 @@ const Overview = () => {
           </Button>
         </Link>
       </Box>
+
+      {/* Insights Notification Box */}
+      <InsightsNotificationBox />
 
       {/* Profits Chart */}
       <Box sx={{ height: 400, marginBottom: 4 }}>
