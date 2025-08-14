@@ -61,7 +61,7 @@ const AddProduct = () => {
   useEffect(() => {
     // Fetch search results if product name length > 2
     if (productName.length > 2 && isOnline && !justSelectedRef.current) {
-      axiosInstance.get(`/products/search?q=${productName}`)
+      axiosInstance.get(`/products/search/global?q=${productName}`)
         .then(response => {
           const uniqueResults = response.data.reduce((acc, product) => {
             const key = `${product.product_name}-${product.variety || ''}-${product.brand || ''}`;
