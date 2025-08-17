@@ -112,7 +112,10 @@ const ViewPurchases = () => {
             {purchases.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((purchase) => (
               <TableRow key={purchase.purchase_id}>
                 <TableCell>{purchase.shop_name}</TableCell>
-                <TableCell>{purchase.product_name}</TableCell>
+                <TableCell>
+                  {purchase.product_name}
+                  {purchase.brand && ` (${purchase.brand})`}
+                </TableCell>
                 <TableCell>{purchase.order_price}</TableCell>
                 <TableCell>{purchase.discount || 0}</TableCell>
                 <TableCell>{purchase.quantity}</TableCell>

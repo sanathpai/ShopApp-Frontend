@@ -17,7 +17,6 @@ import {
   Modal,
   Divider,
 } from '@mui/material';
-import InsightsNotificationBox from '../components/InsightsNotificationBox';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -266,7 +265,10 @@ const Overview = () => {
                   <TableBody>
                     {productsBelowThreshold.map((product) => (
                       <TableRow key={product.productId}>
-                        <TableCell>{product.productName}</TableCell>
+                        <TableCell>
+                          {product.productName}
+                          {product.brand && ` (${product.brand})`}
+                        </TableCell>
                         <TableCell>{product.variety || 'N/A'}</TableCell>
                       </TableRow>
                     ))}
@@ -310,9 +312,6 @@ const Overview = () => {
           </Button>
         </Link>
       </Box>
-
-      {/* Insights Notification Box */}
-      <InsightsNotificationBox />
 
       {/* Profits Chart */}
       <Box sx={{ height: 400, marginBottom: 4 }}>
