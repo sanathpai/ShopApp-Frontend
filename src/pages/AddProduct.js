@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, TextField, Button, Box, Typography, Grid, Snackbar, Alert, Card, CardContent, CardActions, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem, Chip, Stack, IconButton, Paper } from '@mui/material';
+import { Container, TextField, Button, Box, Typography, Grid, Snackbar, Alert, Card, CardContent, CardActions, List, ListItem, ListItemText, Chip, Stack, IconButton, Paper, CircularProgress, Divider, ButtonBase, Badge } from '@mui/material';
 import { PhotoCamera, FlipCameraIos, CheckCircle, Cancel } from '@mui/icons-material';
 import axiosInstance from '../AxiosInstance';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,12 @@ const AddProduct = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [brandSuggestions, setBrandSuggestions] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
+  
+  // CLIP suggestions states
+  const [clipSuggestions, setClipSuggestions] = useState([]);
+  const [clipLoading, setClipLoading] = useState(false);
+  const [clipError, setClipError] = useState('');
+  const [showClipSuggestions, setShowClipSuggestions] = useState(false);
   
   // Image capture states
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -167,6 +173,24 @@ const AddProduct = () => {
 
   const handleBrandSuggestionClick = (selectedBrand) => {
     setBrand(selectedBrand);
+  };
+
+  const handleClipSuggestionSelect = (suggestion) => {
+    // Auto-fill form with selected suggestion
+    setProductName(suggestion.product_name);
+    setBrand(suggestion.brand || '');
+    setVariety(suggestion.variety || '');
+    setSize(suggestion.size || '');
+    
+    // Clear suggestions after selection
+    setShowClipSuggestions(false);
+    
+    // Show confirmation message
+    setSnackbarMessage(`Product details filled from suggestion: ${suggestion.product_name}`);
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+    
+    console.log('📝 Form auto-filled from CLIP suggestion:', suggestion);
   };
 
   // Camera functionality
@@ -392,6 +416,9 @@ const AddProduct = () => {
       
       // Stop camera after capture
       stopCamera();
+      
+      // Trigger CLIP search for similar products
+      searchSimilarProducts(imageDataUrl);
     } else {
       console.error('❌ Video or canvas ref is null');
       setCameraError('Unable to capture photo. Please try again.');
@@ -401,6 +428,12 @@ const AddProduct = () => {
   const retakePhoto = () => {
     setCapturedImage(null);
     setImagePreview(null);
+    
+    // Clear CLIP suggestions when retaking photo
+    setClipSuggestions([]);
+    setShowClipSuggestions(false);
+    setClipError('');
+    
     startCamera();
   };
 
@@ -408,6 +441,11 @@ const AddProduct = () => {
     setCapturedImage(null);
     setImagePreview(null);
     stopCamera();
+    
+    // Clear CLIP suggestions when photo is removed
+    setClipSuggestions([]);
+    setShowClipSuggestions(false);
+    setClipError('');
   };
 
   const handleFileUpload = (event) => {
@@ -433,6 +471,59 @@ const AddProduct = () => {
   };
 
   // New function to compress images before upload
+  // CLIP search functionality
+  const searchSimilarProducts = async (imageData) => {
+    if (!isOnline) {
+      console.log('📱 Offline - skipping CLIP search');
+      return;
+    }
+
+    try {
+      setClipLoading(true);
+      setClipError('');
+      setClipSuggestions([]);
+      
+      console.log('🔍 Starting CLIP search for similar products...');
+      
+      const response = await axiosInstance.post('/clip/search', {
+        image: imageData
+      }, {
+        timeout: 30000 // 30 second timeout for CLIP processing
+      });
+
+      if (response.data.success && response.data.results) {
+        setClipSuggestions(response.data.results);
+        setShowClipSuggestions(true);
+        console.log(`✅ Found ${response.data.results.length} similar products`);
+        
+        // Show success message
+        setSnackbarMessage(`Found ${response.data.results.length} similar products! Check suggestions below.`);
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      } else {
+        setClipError('No similar products found');
+      }
+    } catch (error) {
+      console.error('❌ CLIP search error:', error);
+      let errorMessage = 'Failed to find similar products';
+      
+      if (error.response?.status === 408 || error.code === 'ETIMEDOUT') {
+        errorMessage = 'Search timed out. The image analysis is taking longer than expected.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
+      setClipError(errorMessage);
+      setSnackbarMessage(errorMessage);
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+    } finally {
+      setClipLoading(false);
+    }
+  };
+
   const compressAndConvertImage = (file) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -482,6 +573,9 @@ const AddProduct = () => {
       
       setCameraError(''); // Clear any previous errors
       console.log('✅ Image compressed and uploaded successfully');
+      
+      // Trigger CLIP search for similar products
+      searchSimilarProducts(compressedImageDataUrl);
     };
     
     img.onerror = () => {
@@ -821,6 +915,152 @@ const AddProduct = () => {
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
               </CardContent>
             </Card>
+
+            {/* CLIP Suggestions Section */}
+            {(clipLoading || showClipSuggestions || clipError) && (
+              <Card sx={{ mb: 3, bgcolor: 'blue.50', border: '2px solid', borderColor: 'blue.200' }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    🎯 AI Product Suggestions
+                    {clipLoading && <CircularProgress size={20} />}
+                  </Typography>
+                  
+                  {clipLoading && (
+                    <Box sx={{ textAlign: 'center', py: 3 }}>
+                      <CircularProgress sx={{ mb: 2 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        🔍 Analyzing your image to find similar products...
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                        This may take up to 30 seconds
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {clipError && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      {clipError}
+                    </Alert>
+                  )}
+
+                  {showClipSuggestions && clipSuggestions.length > 0 && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Found {clipSuggestions.length} similar products. Click any suggestion to auto-fill the form:
+                      </Typography>
+                      
+                      <Grid container spacing={2}>
+                        {clipSuggestions.map((suggestion, index) => (
+                          <Grid item xs={12} sm={6} md={4} key={suggestion.product_id}>
+                            <Paper
+                              component={ButtonBase}
+                              onClick={() => handleClipSuggestionSelect(suggestion)}
+                              sx={{
+                                width: '100%',
+                                p: 2,
+                                textAlign: 'left',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 2,
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                  borderColor: 'primary.main',
+                                  bgcolor: 'primary.50',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: 2
+                                }
+                              }}
+                            >
+                              <Box>
+                                {/* Product Image */}
+                                {suggestion.image_url && (
+                                  <Box sx={{ mb: 1, position: 'relative' }}>
+                                    <img
+                                      src={suggestion.image_url}
+                                      alt={suggestion.product_name}
+                                      style={{
+                                        width: '100%',
+                                        height: '80px',
+                                        objectFit: 'cover',
+                                        borderRadius: '4px'
+                                      }}
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                      }}
+                                    />
+                                    <Badge
+                                      badgeContent={`${suggestion.similarity_percentage}%`}
+                                      color="primary"
+                                      sx={{
+                                        position: 'absolute',
+                                        top: 4,
+                                        right: 4,
+                                        '& .MuiBadge-badge': {
+                                          fontSize: '0.7rem',
+                                          fontWeight: 'bold'
+                                        }
+                                      }}
+                                    />
+                                  </Box>
+                                )}
+                                
+                                {/* Product Details */}
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                  {suggestion.product_name}
+                                </Typography>
+                                
+                                {suggestion.brand && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    Brand: {suggestion.brand}
+                                  </Typography>
+                                )}
+                                
+                                {suggestion.variety && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    Variety: {suggestion.variety}
+                                  </Typography>
+                                )}
+                                
+                                {suggestion.size && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    Size: {suggestion.size}
+                                  </Typography>
+                                )}
+                                
+                                <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 1, fontWeight: 'bold' }}>
+                                  🎯 {suggestion.similarity_percentage}% match
+                                </Typography>
+                              </Box>
+                            </Paper>
+                          </Grid>
+                        ))}
+                      </Grid>
+                      
+                      <Divider sx={{ my: 2 }} />
+                      
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => setShowClipSuggestions(false)}
+                        >
+                          ✕ Hide Suggestions
+                        </Button>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                          Not the right product? Continue filling the form manually below.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {showClipSuggestions && clipSuggestions.length === 0 && !clipLoading && (
+                    <Alert severity="info">
+                      No similar products found in the database. You can still add this as a new product using the form below.
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <form onSubmit={handleSubmit}>
               <Grid container spacing={2}>
