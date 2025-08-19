@@ -16,11 +16,11 @@ const AddProduct = () => {
   const [brandSuggestions, setBrandSuggestions] = useState([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine); // Network status
   
-  // CLIP suggestions states
-  const [clipSuggestions, setClipSuggestions] = useState([]);
-  const [clipLoading, setClipLoading] = useState(false);
-  const [clipError, setClipError] = useState('');
-  const [showClipSuggestions, setShowClipSuggestions] = useState(false);
+  // CLIP suggestions states - COMMENTED OUT
+  // const [clipSuggestions, setClipSuggestions] = useState([]);
+  // const [clipLoading, setClipLoading] = useState(false);
+  // const [clipError, setClipError] = useState('');
+  // const [showClipSuggestions, setShowClipSuggestions] = useState(false);
   
   // Image capture states
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -175,23 +175,24 @@ const AddProduct = () => {
     setBrand(selectedBrand);
   };
 
-  const handleClipSuggestionSelect = (suggestion) => {
-    // Auto-fill form with selected suggestion
-    setProductName(suggestion.product_name);
-    setBrand(suggestion.brand || '');
-    setVariety(suggestion.variety || '');
-    setSize(suggestion.size || '');
-    
-    // Clear suggestions after selection
-    setShowClipSuggestions(false);
-    
-    // Show confirmation message
-    setSnackbarMessage(`Product details filled from suggestion: ${suggestion.product_name}`);
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
-    
-    console.log('📝 Form auto-filled from CLIP suggestion:', suggestion);
-  };
+  // CLIP suggestion selection handler - COMMENTED OUT
+  // const handleClipSuggestionSelect = (suggestion) => {
+  //   // Auto-fill form with selected suggestion
+  //   setProductName(suggestion.product_name);
+  //   setBrand(suggestion.brand || '');
+  //   setVariety(suggestion.variety || '');
+  //   setSize(suggestion.size || '');
+  //   
+  //   // Clear suggestions after selection
+  //   setShowClipSuggestions(false);
+  //   
+  //   // Show confirmation message
+  //   setSnackbarMessage(`Product details filled from suggestion: ${suggestion.product_name}`);
+  //   setSnackbarSeverity('success');
+  //   setSnackbarOpen(true);
+  //   
+  //   console.log('📝 Form auto-filled from CLIP suggestion:', suggestion);
+  // };
 
   // Camera functionality
   const startCamera = async () => {
@@ -417,8 +418,8 @@ const AddProduct = () => {
       // Stop camera after capture
       stopCamera();
       
-      // Trigger CLIP search for similar products
-      searchSimilarProducts(imageDataUrl);
+      // Trigger CLIP search for similar products - COMMENTED OUT
+      // searchSimilarProducts(imageDataUrl);
     } else {
       console.error('❌ Video or canvas ref is null');
       setCameraError('Unable to capture photo. Please try again.');
@@ -429,10 +430,10 @@ const AddProduct = () => {
     setCapturedImage(null);
     setImagePreview(null);
     
-    // Clear CLIP suggestions when retaking photo
-    setClipSuggestions([]);
-    setShowClipSuggestions(false);
-    setClipError('');
+    // Clear CLIP suggestions when retaking photo - COMMENTED OUT
+    // setClipSuggestions([]);
+    // setShowClipSuggestions(false);
+    // setClipError('');
     
     startCamera();
   };
@@ -442,10 +443,10 @@ const AddProduct = () => {
     setImagePreview(null);
     stopCamera();
     
-    // Clear CLIP suggestions when photo is removed
-    setClipSuggestions([]);
-    setShowClipSuggestions(false);
-    setClipError('');
+    // Clear CLIP suggestions when photo is removed - COMMENTED OUT
+    // setClipSuggestions([]);
+    // setShowClipSuggestions(false);
+    // setClipError('');
   };
 
   const handleFileUpload = (event) => {
@@ -471,58 +472,58 @@ const AddProduct = () => {
   };
 
   // New function to compress images before upload
-  // CLIP search functionality
-  const searchSimilarProducts = async (imageData) => {
-    if (!isOnline) {
-      console.log('📱 Offline - skipping CLIP search');
-      return;
-    }
+  // CLIP search functionality - COMMENTED OUT
+  // const searchSimilarProducts = async (imageData) => {
+  //   if (!isOnline) {
+  //     console.log('📱 Offline - skipping CLIP search');
+  //     return;
+  //   }
 
-    try {
-      setClipLoading(true);
-      setClipError('');
-      setClipSuggestions([]);
+  //   try {
+  //     setClipLoading(true);
+  //     setClipError('');
+  //     setClipSuggestions([]);
       
-      console.log('🔍 Starting CLIP search for similar products...');
+  //     console.log('🔍 Starting CLIP search for similar products...');
       
-      const response = await axiosInstance.post('/clip/search', {
-        image: imageData
-      }, {
-        timeout: 30000 // 30 second timeout for CLIP processing
-      });
+  //     const response = await axiosInstance.post('/clip/search', {
+  //       image: imageData
+  //     }, {
+  //       timeout: 30000 // 30 second timeout for CLIP processing
+  //     });
 
-      if (response.data.success && response.data.results) {
-        setClipSuggestions(response.data.results);
-        setShowClipSuggestions(true);
-        console.log(`✅ Found ${response.data.results.length} similar products`);
+  //     if (response.data.success && response.data.results) {
+  //       setClipSuggestions(response.data.results);
+  //       setShowClipSuggestions(true);
+  //       console.log(`✅ Found ${response.data.results.length} similar products`);
         
-        // Show success message
-        setSnackbarMessage(`Found ${response.data.results.length} similar products! Check suggestions below.`);
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-      } else {
-        setClipError('No similar products found');
-      }
-    } catch (error) {
-      console.error('❌ CLIP search error:', error);
-      let errorMessage = 'Failed to find similar products';
+  //       // Show success message
+  //       setSnackbarMessage(`Found ${response.data.results.length} similar products! Check suggestions below.`);
+  //       setSnackbarSeverity('success');
+  //       setSnackbarOpen(true);
+  //     } else {
+  //       setClipError('No similar products found');
+  //     }
+  //   } catch (error) {
+  //     console.error('❌ CLIP search error:', error);
+  //     let errorMessage = 'Failed to find similar products';
       
-      if (error.response?.status === 408 || error.code === 'ETIMEDOUT') {
-        errorMessage = 'Search timed out. The image analysis is taking longer than expected.';
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message.includes('Network Error')) {
-        errorMessage = 'Network error. Please check your connection.';
-      }
+  //     if (error.response?.status === 408 || error.code === 'ETIMEDOUT') {
+  //       errorMessage = 'Search timed out. The image analysis is taking longer than expected.';
+  //     } else if (error.response?.data?.error) {
+  //       errorMessage = error.response.data.error;
+  //     } else if (error.message.includes('Network Error')) {
+  //       errorMessage = 'Network error. Please check your connection.';
+  //     }
       
-      setClipError(errorMessage);
-      setSnackbarMessage(errorMessage);
-      setSnackbarSeverity('warning');
-      setSnackbarOpen(true);
-    } finally {
-      setClipLoading(false);
-    }
-  };
+  //     setClipError(errorMessage);
+  //     setSnackbarMessage(errorMessage);
+  //     setSnackbarSeverity('warning');
+  //     setSnackbarOpen(true);
+  //   } finally {
+  //     setClipLoading(false);
+  //   }
+  // };
 
   const compressAndConvertImage = (file) => {
     const canvas = document.createElement('canvas');
@@ -574,8 +575,8 @@ const AddProduct = () => {
       setCameraError(''); // Clear any previous errors
       console.log('✅ Image compressed and uploaded successfully');
       
-      // Trigger CLIP search for similar products
-      searchSimilarProducts(compressedImageDataUrl);
+      // Trigger CLIP search for similar products - COMMENTED OUT
+      // searchSimilarProducts(compressedImageDataUrl);
     };
     
     img.onerror = () => {
@@ -916,8 +917,8 @@ const AddProduct = () => {
               </CardContent>
             </Card>
 
-            {/* CLIP Suggestions Section */}
-            {(clipLoading || showClipSuggestions || clipError) && (
+            {/* CLIP Suggestions Section - COMMENTED OUT */}
+            {/* {(clipLoading || showClipSuggestions || clipError) && (
               <Card sx={{ mb: 3, bgcolor: 'blue.50', border: '2px solid', borderColor: 'blue.200' }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -973,7 +974,7 @@ const AddProduct = () => {
                             >
                               <Box>
                                 {/* Product Image */}
-                                {suggestion.image_url && (
+                                {/* {suggestion.image_url && (
                                   <Box sx={{ mb: 1, position: 'relative' }}>
                                     <img
                                       src={suggestion.image_url}
@@ -1002,10 +1003,10 @@ const AddProduct = () => {
                                       }}
                                     />
                                   </Box>
-                                )}
+                                )} */}
                                 
                                 {/* Product Details */}
-                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                {/* <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
                                   {suggestion.product_name}
                                 </Typography>
                                 
@@ -1029,8 +1030,8 @@ const AddProduct = () => {
                                 
                                 <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 1, fontWeight: 'bold' }}>
                                   🎯 {suggestion.similarity_percentage}% match
-                                </Typography>
-                              </Box>
+                                </Typography> */}
+                              {/* </Box>
                             </Paper>
                           </Grid>
                         ))}
@@ -1060,7 +1061,7 @@ const AddProduct = () => {
                   )}
                 </CardContent>
               </Card>
-            )}
+            )} */}
 
             <form onSubmit={handleSubmit}>
               <Grid container spacing={2}>
