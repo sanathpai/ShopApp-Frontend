@@ -111,6 +111,7 @@ const ViewSales = () => {
               <CardContent>
                 <Typography variant="h6" component="div">
                   {sale.product_name}
+                  {sale.brand && ` (${sale.brand})`}
                 </Typography>
                 <Typography color="text.secondary">Variety: {sale.variety}</Typography>
                 <Typography color="text.secondary">Retail Price: {sale.retail_price}</Typography>
@@ -177,7 +178,7 @@ const ViewSales = () => {
         <DialogContent>
           {selectedSale && (
             <>
-              <DialogContentText>Product Name: {selectedSale.product_name}</DialogContentText>
+              <DialogContentText>Product Name: {selectedSale.product_name}{selectedSale.brand && ` (${selectedSale.brand})`}</DialogContentText>
               <DialogContentText>Variety: {selectedSale.variety}</DialogContentText>
               <DialogContentText>Retail Price: ${selectedSale.retail_price}</DialogContentText>
               <DialogContentText>Discount: ${selectedSale.discount || 0}</DialogContentText>

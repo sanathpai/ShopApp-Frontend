@@ -109,7 +109,10 @@ const ViewUnits = () => {
           <Grid item xs={12} sm={6} md={4} key={unit.unit_id}>
             <Card>
               <CardContent>
-                <Typography variant="h6">{unit.product_name || 'Product Name Unavailable'}</Typography>
+                <Typography variant="h6">
+                  {unit.product_name || 'Product Name Unavailable'}
+                  {unit.brand && ` (${unit.brand})`}
+                </Typography>
                 {unit.variety && <Typography variant="body2">Variety: {unit.variety}</Typography>}
                 <Typography variant="body2">Unit Type: {unit.unit_type}</Typography>
                 <Typography variant="body2">Unit Category: {unit.unit_category}</Typography>
@@ -152,7 +155,10 @@ const ViewUnits = () => {
         <DialogContent>
           {selectedUnit && (
             <>
-              <Typography variant="body1">Product Name: {selectedUnit.product_name}</Typography>
+              <Typography variant="body1">
+                Product Name: {selectedUnit.product_name}
+                {selectedUnit.brand && ` (${selectedUnit.brand})`}
+              </Typography>
               {selectedUnit.variety && <Typography variant="body1">Variety: {selectedUnit.variety}</Typography>}
               <Typography variant="body1">Unit Type: {selectedUnit.unit_type}</Typography>
               <Typography variant="body1">Unit Category: {selectedUnit.unit_category}</Typography>
