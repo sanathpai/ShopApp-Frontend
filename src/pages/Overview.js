@@ -17,6 +17,7 @@ import {
   Modal,
   Divider,
 } from '@mui/material';
+import InsightsNotificationBox from '../components/InsightsNotificationBox';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -183,6 +184,9 @@ const Overview = () => {
 
   return (
     <Box sx={{ padding: 2 }}>
+      {/* Insights Notification Box */}
+      <InsightsNotificationBox />
+      
       {/* Modal for Products Below Threshold and Without Inventory */}
       <Modal open={modalOpen} onClose={handleCloseModal}>
         <Box sx={{ 
