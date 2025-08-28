@@ -1,7 +1,11 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'https://shoppeappnow.com/api',
+  baseURL: process.env.REACT_APP_API_BASE_URL || 
+    (process.env.NODE_ENV === 'production' 
+      ? 'https://frontend.shoppeappnow.com/api'  // Use nginx proxy
+      : 'http://localhost:8000/api'
+    ),
   headers: {
     'Content-Type': 'application/json',
   },
