@@ -14,8 +14,14 @@ import {
   MenuItem,
   Button,
   Paper,
-  Modal,
+  // Modal,
   Divider,
+  Card,
+  CardContent,
+  Switch,
+  FormControlLabel,
+  Alert,
+  Chip,
 } from '@mui/material';
 import InsightsNotificationBox from '../components/InsightsNotificationBox';
 import { Bar } from 'react-chartjs-2';
@@ -39,7 +45,18 @@ const Overview = () => {
   const [productColors, setProductColors] = useState({});
   const [productsBelowThreshold, setProductsBelowThreshold] = useState([]);
   const [productsWithoutInventory, setProductsWithoutInventory] = useState([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  // const [modalOpen, setModalOpen] = useState(false);
+  
+  // Beta feature toggle state
+  const [clipBetaEnabled, setClipBetaEnabled] = useState(false);
+
+  // Load beta settings from localStorage on component mount
+  useEffect(() => {
+    const savedBetaSetting = localStorage.getItem('clipBetaEnabled');
+    if (savedBetaSetting !== null) {
+      setClipBetaEnabled(JSON.parse(savedBetaSetting));
+    }
+  }, []);
 
   useEffect(() => {
     const fetchOverviewData = async () => {
@@ -109,11 +126,11 @@ const Overview = () => {
   }, []);
 
   // Open modal if there are products below threshold OR products without inventory
-  useEffect(() => {
-    if (productsBelowThreshold.length > 0 || productsWithoutInventory.length > 0) {
-      setModalOpen(true);
-    }
-  }, [productsBelowThreshold, productsWithoutInventory]);
+  // useEffect(() => {
+  //   if (productsBelowThreshold.length > 0 || productsWithoutInventory.length > 0) {
+  //     setModalOpen(true);
+  //   }
+  // }, [productsBelowThreshold, productsWithoutInventory]);
 
   const generateUniqueColors = (products) => {
     const colorMap = {};
@@ -163,7 +180,7 @@ const Overview = () => {
     indexAxis: 'y',
   };
 
-  const handleCloseModal = () => setModalOpen(false);
+  // const handleCloseModal = () => setModalOpen(false);
 
   const formatProductDisplay = (product) => {
     let display = product.productName;
@@ -182,13 +199,133 @@ const Overview = () => {
     return `/dashboard/inventories/stock-entry?product_id=${product.productId}&product_name=${encodedName}&variety=${encodedVariety}`;
   };
 
+  // Handle beta toggle change
+  const handleClipBetaToggle = (event) => {
+    const enabled = event.target.checked;
+    setClipBetaEnabled(enabled);
+    localStorage.setItem('clipBetaEnabled', JSON.stringify(enabled));
+  };
+
   return (
     <Box sx={{ padding: 2 }}>
       {/* Insights Notification Box */}
       <InsightsNotificationBox />
       
+      {/* Inventory Notifications - Products Without Initial Stock */}
+      {productsWithoutInventory.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Products Without Initial Stock Set
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                The following products do not have their initial stocks set:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {productsWithoutInventory.map((product) => (
+                  <Chip
+                    key={product.productId}
+                    label={`${formatProductDisplay(product)}${product.variety ? ` - ${product.variety}` : ''}`}
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    component={Link}
+                    to={generateAddInventoryLink(product)}
+                    clickable
+                    sx={{ textDecoration: 'none' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Box>
+        </Alert>
+      )}
+
+      {/* Inventory Notifications - Low Stock Warning */}
+      {productsBelowThreshold.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Low Stock Warning
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                The following products are running low on stock - click to reconcile inventory:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {productsBelowThreshold.map((product) => (
+                  <Chip
+                    key={product.productId}
+                    label={`${product.productName}${product.brand ? ` (${product.brand})` : ''}${product.variety ? ` - ${product.variety}` : ''}`}
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                    component={Link}
+                    to="/dashboard/inventories/view"
+                    clickable
+                    sx={{ textDecoration: 'none' }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Box>
+        </Alert>
+      )}
+      
+      {/* Beta Features Toggle */}
+      <Card sx={{ mb: 3, bgcolor: clipBetaEnabled ? 'blue.50' : 'grey.50', border: '1px solid', borderColor: clipBetaEnabled ? 'blue.200' : 'grey.300' }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                🧪 Beta Features
+                <Chip label="Experimental" size="small" color="warning" />
+              </Typography>
+            </Box>
+            
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={clipBetaEnabled}
+                  onChange={handleClipBetaToggle}
+                  color="primary"
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                    🎯 AI Product Suggestions (CLIP)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {clipBetaEnabled ? 'AI suggestions active - slower processing' : 'Fast mode - no AI processing'}
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+          
+          <Alert severity={clipBetaEnabled ? "info" : "success"} sx={{ mt: 2 }}>
+            <Typography variant="body2">
+              {clipBetaEnabled ? (
+                <>
+                  <strong>🎯 AI Product Suggestions Enabled:</strong> When adding photos in "Add Product", 
+                  the system will analyze images and suggest similar products. 
+                  <strong> Processing takes 10-30 seconds</strong> per photo.
+                </>
+              ) : (
+                <>
+                  <strong>⚡ Fast Mode Active:</strong> Product creation is optimized for speed. 
+                  Photos can still be taken and saved, but no AI processing delays occur.
+                </>
+              )}
+            </Typography>
+          </Alert>
+        </CardContent>
+      </Card>
+      
       {/* Modal for Products Below Threshold and Without Inventory */}
-      <Modal open={modalOpen} onClose={handleCloseModal}>
+      {/* <Modal open={modalOpen} onClose={handleCloseModal}>
         <Box sx={{ 
           padding: 4, 
           background: 'white', 
@@ -200,11 +337,11 @@ const Overview = () => {
           maxHeight: '80vh',
           overflowY: 'auto'
         }}>
-          {/* <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" gutterBottom>
             Inventory Notifications
-          </Typography> */}
+          </Typography>
           
-          {/* Products Without Inventory Section */}
+          Products Without Inventory Section
           {productsWithoutInventory.length > 0 && (
             <>
               <Typography variant="h6" color="error" gutterBottom>
@@ -247,12 +384,12 @@ const Overview = () => {
             </>
           )}
 
-          {/* Divider if both sections exist */}
+          Divider if both sections exist
           {productsWithoutInventory.length > 0 && productsBelowThreshold.length > 0 && (
             <Divider sx={{ marginY: 2 }} />
           )}
 
-          {/* Products Below Threshold Section */}
+          Products Below Threshold Section
           {productsBelowThreshold.length > 0 && (
             <>
               <Typography variant="h6" color="warning.main" gutterBottom>
@@ -282,7 +419,7 @@ const Overview = () => {
             </>
           )}
 
-          {/* Show message if no issues */}
+          Show message if no issues
           {productsWithoutInventory.length === 0 && productsBelowThreshold.length === 0 && (
             <Typography>No inventory issues found.</Typography>
           )}
@@ -291,7 +428,7 @@ const Overview = () => {
             Close
           </Button>
         </Box>
-      </Modal>
+      </Modal> */}
 
       {/* Buttons */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginBottom: 3 }}>
